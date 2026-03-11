@@ -66,7 +66,8 @@ async function loadFS(uid){
       const d=snap.data();
       if(d.user)Object.assign(user,d.user);
       if(d.gs){Object.assign(gs,d.gs);if(!gs.challengeProgress)gs.challengeProgress={};if(!Array.isArray(gs.weeklyWo)||gs.weeklyWo.length!==7)gs.weeklyWo=[0,0,0,0,0,0,0];}
-      if(d.tasksDone&&d.gs?.lastHabitDay===new Date().toDateString())tasksDone=new Set(d.tasksDone);
+      const todayStr=new Date().toLocaleDateString('en-GB');
+      if(d.tasksDone&&d.gs?.lastHabitDay===todayStr)tasksDone=new Set(d.tasksDone);else tasksDone=new Set();
       if(d.recentWorkouts)recentWorkouts=d.recentWorkouts;
       if(d.weightLog)weightLog=d.weightLog;
       if(d.bodyStats)Object.assign(bodyStats,d.bodyStats);
@@ -109,7 +110,7 @@ onAuthStateChanged(auth,async(fu)=>{
       obStep=1;renderObProg();
       document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('show'));
       g('obs1').classList.add('show');
-    }else{const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}setTimeout(()=>{try{initApp();switchTab('home');}catch(e){console.error(e);}},320);}
+    }else{const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}setTimeout(()=>{try{initApp();switchTab('home');saveFS();}catch(e){console.error(e);}},350);}
   }else{
     currentUID=null;
     ['page-app','page-ob'].forEach(p=>{const el=g(p);if(el){el.classList.remove('active');el.style.display='none';}});
@@ -203,21 +204,10 @@ window.doLogout=function(){
 
 function subscribeLB(){
   if(lbUnsub){lbUnsub();lbUnsub=null;}
-  // Order by allTimePts so Firestore returns sorted results (requires index or composite)
-  // Use a plain collection scan limited to 50 — works without an index
-  const q=query(collection(db,'users'),orderBy('gs.allTimePts','desc'),limit(50));
-  lbUnsub=onSnapshot(q,snap=>{
+  lbUnsub=onSnapshot(collection(db,'users'),snap=>{
     window._lbData=snap.docs.map(d=>{const dt=d.data();return{uid:d.id,name:dt.user?.name||'Player',avatar:dt.user?.avatar||'💪',weeklyPts:dt.gs?.weeklyPts||0,allTimePts:dt.gs?.allTimePts||0,streak:dt.gs?.streak||0,habitStreak:dt.gs?.habitStreak||0,totalWo:dt.gs?.totalWo||0,level:dt.gs?.level||1};});
     if(g('lb-weekly-list'))renderLeaderboard();
-  },e=>{
-    // Fallback: if orderBy index not ready, fetch without ordering
-    console.warn('LB orderBy failed, falling back:',e);
-    const q2=query(collection(db,'users'),limit(50));
-    lbUnsub=onSnapshot(q2,snap=>{
-      window._lbData=snap.docs.map(d=>{const dt=d.data();return{uid:d.id,name:dt.user?.name||'Player',avatar:dt.user?.avatar||'💪',weeklyPts:dt.gs?.weeklyPts||0,allTimePts:dt.gs?.allTimePts||0,streak:dt.gs?.streak||0,habitStreak:dt.gs?.habitStreak||0,totalWo:dt.gs?.totalWo||0,level:dt.gs?.level||1};});
-      if(g('lb-weekly-list'))renderLeaderboard();
-    },e2=>console.error('LB fallback error:',e2));
-  });
+  },e=>console.error('LB error:',e));
 }
 
 function g(id){return document.getElementById(id);}
@@ -438,9 +428,8 @@ window.genMeal=async function(){
   err.classList.remove('show');
   if(!ing){err.textContent='⚠️ Add some ingredients first!';err.classList.add('show');return;}
   g('m-btn').disabled=true;g('m-load').classList.add('vis');g('m-result').classList.remove('vis');g('m-regen').style.display='none';
-  const prompt=`You are a bulking nutrition coach. ${user.name} (${user.weight}kg, ${user.age}yrs). Daily target: ${user.calories} kcal, ${user.protein}g protein. Ingredients: ${ing}.\nGive a full day meal plan:\nBREAKFAST 🌅\n[description]\n~[X] kcal | [X]g protein\nMID-MORNING SNACK ☀️\n[description]\n~[X] kcal\nLUNCH 🍽️\n[description]\n~[X] kcal\nEVENING SNACK 🧃\n[description]\n~[X] kcal\nDINNER 🌙\n[description]\n~[X] kcal\nBEFORE BED 😴\n[description]\n~[X] kcal\nMACROS SUMMARY\nProtein: ~[X]g\nCarbs: ~[X]g\nFats: ~[X]g\nCOACH'S NOTE\n[2 motivating sentences]`;
+  const prompt=`You are a bulking nutrition coach. Create a full day meal plan for ${user.name} who weighs ${user.weight}kg, is ${user.age} years old, and needs ${user.calories} kcal and ${user.protein}g protein daily. Use these ingredients: ${ing}.\n\nUse EXACTLY this format (no emojis in section headers):\n\nBREAKFAST\n[meal description]\n~[number] kcal\n\nMID-MORNING SNACK\n[meal description]\n~[number] kcal\n\nLUNCH\n[meal description]\n~[number] kcal\n\nEVENING SNACK\n[meal description]\n~[number] kcal\n\nDINNER\n[meal description]\n~[number] kcal\n\nBEFORE BED\n[meal description]\n~[number] kcal\n\nMACROS SUMMARY\nProtein: ~[number]g\nCarbs: ~[number]g\nFats: ~[number]g\n\nCOACH NOTE\n[2 motivating sentences for someone trying to bulk up]`;
   try{
-    // 🔒 API key is hidden — calls Netlify Function, not Anthropic directly
     const token=await auth.currentUser?.getIdToken();
     const res=await fetch('/api/claude',{
       method:'POST',
@@ -448,7 +437,9 @@ window.genMeal=async function(){
       body:JSON.stringify({messages:[{role:'user',content:prompt}]})
     });
     const data=await res.json();
-    renderMeal(data.content?.map(b=>b.text||'').join('')||'');
+    const text=data.content?.map(b=>b.text||'').join('')||'';
+    if(!text){throw new Error('Empty response');}
+    renderMeal(text);
   }catch(e){
     g('m-load').classList.remove('vis');g('m-btn').disabled=false;
     g('m-err').textContent='⚠️ Error. Try again.';g('m-err').classList.add('show');
@@ -457,13 +448,26 @@ window.genMeal=async function(){
 function renderMeal(text){
   g('m-load').classList.remove('vis');g('m-btn').disabled=false;
   g('m-rname').textContent=user.name;g('m-rcal').textContent=user.calories;
+  // Parse macros
   const pm=text.match(/Protein:\s*~?(\d+)g/i),cm=text.match(/Carbs:\s*~?(\d+)g/i),fm=text.match(/Fats:\s*~?(\d+)g/i);
   if(pm)g('m-mp').textContent='~'+pm[1]+'g';if(cm)g('m-mc').textContent='~'+cm[1]+'g';if(fm)g('m-mf').textContent='~'+fm[1]+'g';
-  const note=text.match(/COACH'S NOTE\s*\n([\s\S]*?)$/i);if(note)g('m-note').textContent=note[1].trim();
+  // Parse coach note
+  const note=text.match(/COACH(?:'S)?\s*NOTE\s*\n([\s\S]*?)$/i);if(note)g('m-note').textContent=note[1].trim().substring(0,200);
+  // Parse meals — split by known section headers
   const MEALS=[{k:'BREAKFAST',i:'🌅'},{k:'MID-MORNING SNACK',i:'☀️'},{k:'LUNCH',i:'🍽️'},{k:'EVENING SNACK',i:'🧃'},{k:'DINNER',i:'🌙'},{k:'BEFORE BED',i:'😴'}];
-  const nk=MEALS.map(m=>m.k).join('|')+'|MACROS SUMMARY|COACH';
-  let h='';MEALS.forEach(({k,i})=>{const m=text.match(new RegExp(k+'[^\\n]*\\n([\\s\\S]*?)(?=(?:'+nk+'))','i'));if(m){const c=m[1].trim();const cal=c.match(/~?(\d+)\s*kcal/i);const clean=c.replace(/~?\d+\s*kcal[^\n]*/i,'').trim();h+=`<div class="meal-block"><div class="mb-title">${i} ${k}</div><div class="mb-content">${clean}</div>${cal?`<div class="mb-cal">~${cal[1]} kcal</div>`:''}</div>`;}});
-  if(!h)h=`<div style="font-size:12px;line-height:1.75;white-space:pre-wrap;">${text}</div>`;
+  const allKeys=MEALS.map(m=>m.k).join('|');
+  let h='';
+  MEALS.forEach(({k,i})=>{
+    const re=new RegExp(k+'\\s*\\n([\\s\\S]*?)(?=(?:'+allKeys+'|MACROS|COACH|$))','i');
+    const m=text.match(re);
+    if(m){
+      const c=m[1].trim();
+      const cal=c.match(/~?(\d+)\s*kcal/i);
+      const clean=c.replace(/~?\d+\s*kcal[^\n]*/ig,'').replace(/^\s*[\r\n]/gm,'').trim();
+      if(clean)h+=`<div class="meal-block"><div class="mb-title">${i} ${k}</div><div class="mb-content">${clean}</div>${cal?`<div class="mb-cal">~${cal[1]} kcal</div>`:''}</div>`;
+    }
+  });
+  if(!h)h=`<div style="font-size:12px;line-height:1.75;white-space:pre-wrap;color:var(--text);">${text}</div>`;
   g('m-meals').innerHTML=h;g('m-result').classList.add('vis');g('m-regen').style.display='block';
   addXP(20,'Meal plan');saveFS();
 }
