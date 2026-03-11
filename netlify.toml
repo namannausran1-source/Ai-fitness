@@ -1,0 +1,11 @@
+# netlify.toml — place this in your project ROOT folder
+
+[build]
+  publish = "."          # your index.html is in root
+  functions = "netlify/functions"
+
+# Rewrite /api/claude → Netlify Function
+[[redirects]]
+  from = "/api/claude"
+  to = "/.netlify/functions/claude"
+  status = 200
