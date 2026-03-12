@@ -289,8 +289,8 @@ function buildTasks(){
 }
 window.toggleTask=function(id,el){
   const t=TASKS.find(x=>x.id===id);
-  if(tasksDone.has(id)){tasksDone.delete(id);el.classList.remove('done');el.textContent='';gs.xp=Math.max(0,gs.xp-t.xp);gs.weeklyPts=Math.max(0,gs.weeklyPts-t.pts);updateXP();}
-  else{tasksDone.add(id);el.classList.add('done');el.textContent='✓';addXP(t.xp,'Habit done');}
+  if(tasksDone.has(id)){showToast('✅ Already done today!');return;}
+  tasksDone.add(id);el.classList.add('done');el.textContent='✓';addXP(t.xp,'Habit done');
   buildTasks();saveFS();
 };
 function checkHabit(){
@@ -299,6 +299,11 @@ function checkHabit(){
 window.quickLog=function(){
   const c=parseInt(g('ql-cal').value)||0,p=parseInt(g('ql-pro').value)||0;
   if(!c&&!p){showToast('⚠️ Enter calories or protein');return;}
+  const today=new Date().toLocaleDateString('en-GB');
+  gs.mealLogsToday=gs.lastMealLogDate===today?(gs.mealLogsToday||0):0;
+  if(gs.mealLogsToday>=5){showToast('⚠️ Max 5 meal logs per day!');return;}
+  gs.mealLogsToday=(gs.mealLogsToday||0)+1;
+  gs.lastMealLogDate=today;
   gs.calLogged=Math.min(gs.calLogged+c,Math.round(user.calories*1.5));
   gs.proLogged=Math.min(gs.proLogged+p,Math.round(user.protein*1.5));
   if(gs.proLogged>=user.protein)gs.challengeProgress.proteinDays=(gs.challengeProgress.proteinDays||0)+1;
@@ -402,16 +407,24 @@ function completeWorkout(){
   g('cs-min').textContent=mins;g('cs-cal').textContent=cal;g('cs-sets').textContent=totalSetsDone;g('cs-xp').textContent=`+${xpE} XP · +${pts} pts`;
   g('comp-sub').textContent=`"${aw.nm}" — ${mins} mins. Saved! 🔥`;
   g('completeOverlay').classList.add('show');
+  const today=new Date().toLocaleDateString('en-GB');
+  // Limit to 2 workouts per day to prevent XP farming
+  gs.wosToday=gs.lastWorkoutDate===today?(gs.wosToday||0):0;
+  if(gs.wosToday>=2){showToast('💪 Max 2 workouts per day!');g('completeOverlay').classList.remove('show');g('wo-overlay').classList.remove('show');aw=null;return;}
+  gs.wosToday=(gs.wosToday||0)+1;
   gs.totalWo++;gs.weeklyPts+=pts;gs.allTimePts+=pts;gs.challengeProgress.totalWo=gs.totalWo;
   gs.calLogged=Math.min(gs.calLogged+Math.round(cal*0.25),Math.round(user.calories*1.5));
   const ti=(new Date().getDay()+6)%7;gs.weeklyWo[ti]+=1;
-  const today=new Date().toLocaleDateString('en-GB');
   if(gs.lastWorkoutDate!==today){gs.streak++;gs.lastWorkoutDate=today;}
   gs.challengeProgress.streak=gs.streak;
   aw.exs.forEach(e=>{const ms=e.ms.toLowerCase();if(ms.includes('chest'))muscleFocus.chest=Math.min((muscleFocus.chest||0)+14,100);if(ms.includes('back')||ms.includes('lat'))muscleFocus.back=Math.min((muscleFocus.back||0)+14,100);if(ms.includes('leg')||ms.includes('quad')||ms.includes('glute'))muscleFocus.legs=Math.min((muscleFocus.legs||0)+14,100);if(ms.includes('core'))muscleFocus.core=Math.min((muscleFocus.core||0)+14,100);if(ms.includes('shoulder'))muscleFocus.shoulders=Math.min((muscleFocus.shoulders||0)+14,100);if(ms.includes('arm')||ms.includes('bicep')||ms.includes('tricep'))muscleFocus.arms=Math.min((muscleFocus.arms||0)+14,100);if(ms.includes('full body'))Object.keys(muscleFocus).forEach(k=>muscleFocus[k]=Math.min((muscleFocus[k]||0)+8,100));});
   if(!tasksDone.has('t3'))tasksDone.add('t3');
   recentWorkouts.unshift({nm:aw.nm,mins,cal,date:today,icon:aw.icon,bg:aw.bg});
   if(recentWorkouts.length>5)recentWorkouts.pop();
+  // Store in workoutDates for calendar (persistent full history)
+  if(!gs.workoutDates)gs.workoutDates=[];
+  if(!gs.workoutDates.includes(today))gs.workoutDates.push(today);
+  if(gs.workoutDates.length>90)gs.workoutDates=gs.workoutDates.slice(-90);
   addXP(xpE,'Workout done');saveFS();
 }
 window.finishWorkout=function(){g('completeOverlay').classList.remove('show');g('wo-overlay').classList.remove('show');aw=null;renderRecent();updateXP();updateRings();drawChart();buildTasks();buildAchievements();switchTab('home');};
@@ -485,6 +498,9 @@ function buildProgHero(){
   else{g('prog-gained').textContent='+0';g('prog-sub').textContent='Log your weight daily to track your bulk.';}
 }
 window.logWeight=function(){
+  const todayKey=new Date().toLocaleDateString('en-GB');
+  if(gs.lastWeightLogDate===todayKey){showToast('⚖️ Weight already logged today!');return;}
+  gs.lastWeightLogDate=todayKey;
   const v=parseFloat(g('wl-in').value);
   if(!v||v<20||v>300){showToast('⚠️ Enter valid weight (20–300 kg)');return;}
   const today=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
@@ -519,10 +535,17 @@ function buildBodyGrid(){
 function buildCalendar(){
   const now=new Date(),yr=now.getFullYear(),mo=now.getMonth(),today=now.getDate();
   const firstDay=(new Date(yr,mo,1).getDay()+6)%7,dim=new Date(yr,mo+1,0).getDate();
-  const woSet=new Set(recentWorkouts.map(w=>w.date));
+  // Use gs.workoutDates for full history (not just recent 5)
+  const woSet=new Set(gs.workoutDates||[]);
+  // Also add dates from recentWorkouts as fallback
+  recentWorkouts.forEach(w=>{if(w.date)woSet.add(w.date);});
   let h=['M','T','W','T','F','S','S'].map(d=>`<div class="cd-lbl">${d}</div>`).join('');
   for(let i=0;i<firstDay;i++)h+=`<div class="cd empty"></div>`;
-  for(let d=1;d<=dim;d++){const ds=new Date(yr,mo,d).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});let cls=d<today?woSet.has(ds)?'workout':'missed':d===today?'today':'future';h+=`<div class="cd ${cls}">${d}</div>`;}
+  for(let d=1;d<=dim;d++){
+    const ds=new Date(yr,mo,d).toLocaleDateString('en-GB');
+    let cls=d<today?woSet.has(ds)?'workout':'missed':d===today?'today':'future';
+    h+=`<div class="cd ${cls}">${d}</div>`;
+  }
   g('cal-grid').innerHTML=h;
 }
 const MDEF=[{l:'🦵 Legs',k:'legs',c:'#22c55e'},{l:'💪 Chest',k:'chest',c:'#4f46e5'},{l:'🔙 Back',k:'back',c:'#f97316'},{l:'🧱 Core',k:'core',c:'#eab308'},{l:'🤜 Arms',k:'arms',c:'#a855f7'},{l:'☝️ Shoulders',k:'shoulders',c:'#ef4444'}];
@@ -719,7 +742,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 .task-sub{font-size:10px;color:var(--muted);}
 .task-xp{font-size:10px;font-weight:700;color:var(--primary);}
 .ql-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
-.chart-wrap{height:88px;display:flex;align-items:flex-end;gap:5px;width:100%;}
+.chart-wrap{height:100px;display:flex;align-items:flex-end;gap:5px;width:100%;overflow:visible;padding-bottom:2px;}
 .bc{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;}
 .bw{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;}
 .b{width:74%;border-radius:5px 5px 3px 3px;transition:height .6s cubic-bezier(.34,1.2,.64,1);}
@@ -1030,7 +1053,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       <div class="app-logo">Bulk<em>Up</em></div>
       <div style="display:flex;gap:7px;">
         <div class="icon-btn" onclick="showToast('🔒 Secured by Netlify + Firebase!')">🔒</div>
-        <div class="icon-btn" onclick="doLogout()">🚪</div>
+        <div class="icon-btn" onclick="doLogout()" style="background:#fff0f0;border-color:#fca5a5;color:#ef4444;font-size:18px;" title="Logout">🚪</div>
       </div>
     </div>
     <div class="scroll pad">
@@ -1203,7 +1226,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
         <div class="sl-item" onclick="showToast('🔔 Reminders coming soon!')"><div class="sl-icon" style="background:var(--surface);">🔔</div><div class="sl-lbl">Daily Reminders</div><div class="sl-arrow">›</div></div>
         <div class="sl-item" onclick="doLogout()"><div class="sl-icon" style="background:var(--rl);">🚪</div><div class="sl-lbl" style="color:var(--red);">Sign Out</div><div class="sl-arrow">›</div></div>
       </div>
-      <div style="height:12px;"></div>
+      <div style="height:80px;"></div>
     </div>
       </div>
 
