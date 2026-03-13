@@ -812,9 +812,9 @@ renderObProg();
 html,body{height:100%;overscroll-behavior:none;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;display:flex;justify-content:center;overflow:hidden;}
 .app{width:100%;max-width:430px;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:var(--bg);}
-.page{position:absolute;inset:0;display:none;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}
+.page{position:absolute;top:0;left:0;right:0;bottom:65px;display:none;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}
 .page.active{display:flex;opacity:1;pointer-events:all;transform:translateY(0);z-index:10;}
-.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:140px;}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:20px;}
 .scroll::-webkit-scrollbar{display:none;}
 .pad{padding:0 18px;}
 .bnav{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1.5px solid var(--border);display:flex;padding:8px 0 max(20px,env(safe-area-inset-bottom));z-index:1000;box-shadow:0 -4px 24px rgba(0,0,0,.07);}
@@ -918,7 +918,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 .task-sub{font-size:10px;color:var(--muted);}
 .task-xp{font-size:10px;font-weight:700;color:var(--primary);}
 .ql-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
-.chart-wrap{height:100px;display:flex;align-items:flex-end;gap:5px;width:100%;overflow:visible;padding-bottom:2px;}
+.chart-wrap{height:120px;display:flex;align-items:flex-end;gap:5px;width:100%;overflow:visible;padding-bottom:16px;}
 .bc{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;}
 .bw{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;}
 .b{width:74%;border-radius:5px 5px 3px 3px;transition:height .6s cubic-bezier(.34,1.2,.64,1);}
