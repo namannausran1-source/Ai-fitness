@@ -811,13 +811,13 @@ renderObProg();
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overscroll-behavior:none;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;display:flex;justify-content:center;overflow:hidden;}
-.app{width:100%;max-width:430px;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:var(--bg);}
-.page{position:absolute;inset:0;display:none;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}
+.app{width:100%;max-width:430px;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:var(--bg);}
+.page{position:absolute;top:0;left:0;right:0;bottom:85px;display:none;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}
 .page.active{display:flex;opacity:1;pointer-events:all;transform:translateY(0);z-index:10;}
-.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:calc(280px + env(safe-area-inset-bottom, 0px));}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:50px;}
 .scroll::-webkit-scrollbar{display:none;}
 .pad{padding:0 18px;}
-.bnav{position:absolute;bottom:0;left:0;right:0;background:var(--white);border-top:1.5px solid var(--border);display:flex;padding:8px 0 max(20px,env(safe-area-inset-bottom));z-index:100;box-shadow:0 -4px 24px rgba(0,0,0,.07);}
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1.5px solid var(--border);display:flex;padding:8px 0 max(20px,env(safe-area-inset-bottom));z-index:1000;box-shadow:0 -4px 24px rgba(0,0,0,.07);}
 .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;padding:3px 1px;transition:transform .15s;}
 .bn-item:active{transform:scale(.85);}
 .bn-icon{font-size:20px;line-height:1;transition:transform .2s;}
@@ -1223,10 +1223,10 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 </div>
 
 <!-- MAIN APP -->
-<div class="page" id="page-app">
+<div class="page" id="page-app" style="padding-bottom:0;">
 
   <!-- HOME -->
-  <div id="sc-home" style="display:flex;flex-direction:column;height:100%;">
+  <div id="sc-home" style="display:flex;flex-direction:column;flex:1;min-height:0;">
     <div class="app-header">
       <div class="app-logo">Bulk<em>Up</em></div>
       <div style="display:flex;gap:7px;">
@@ -1269,7 +1269,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       </div>
 
   <!-- WORKOUT -->
-  <div id="sc-workout" style="display:none;flex-direction:column;height:100%;">
+  <div id="sc-workout" style="display:none;flex-direction:column;flex:1;min-height:0;">
     <div style="padding:16px 18px 7px;flex-shrink:0;"><div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;">Workouts 💪</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Pick a plan and go!</div></div>
     <div class="mode-row"><button class="mode-btn a" id="mb-home" onclick="switchMode('home')">🏠 Home</button><button class="mode-btn" id="mb-gym" onclick="switchMode('gym')">🏋️ Gym</button></div>
     <div class="scroll pad">
@@ -1292,7 +1292,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       </div>
 
   <!-- LEADERBOARD -->
-  <div id="sc-leaderboard" style="display:none;flex-direction:column;height:100%;">
+  <div id="sc-leaderboard" style="display:none;flex-direction:column;flex:1;min-height:0;">
     <div style="padding:16px 18px 7px;flex-shrink:0;"><div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;">Compete 🏆</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Live Firebase leaderboard!</div></div>
     <div class="scroll pad">
       <div class="lb-hero">
@@ -1325,7 +1325,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       </div>
 
   <!-- MEAL -->
-  <div id="sc-meal" style="display:none;flex-direction:column;height:100%;">
+  <div id="sc-meal" style="display:none;flex-direction:column;flex:1;min-height:0;">
     <div style="padding:16px 18px 7px;flex-shrink:0;"><div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;">Meal Planner 🍳</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">AI-powered · API secured by Netlify 🔒</div></div>
     <div class="scroll pad">
       <div class="card">
@@ -1361,7 +1361,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       </div>
 
   <!-- PROGRESS -->
-  <div id="sc-progress" style="display:none;flex-direction:column;height:100%;">
+  <div id="sc-progress" style="display:none;flex-direction:column;flex:1;min-height:0;">
     <div style="padding:16px 18px 7px;flex-shrink:0;"><div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;">My Progress 📈</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Track your transformation.</div></div>
     <div class="scroll pad">
       <div class="prog-hero"><div class="ph-glow"></div><div class="ph-title" id="prog-title">Keep Going! 🔥</div><div class="ph-sub" id="prog-sub">Log weight daily.</div><div class="ph-stats"><div class="ph-s"><div class="ph-sv" id="prog-days">0</div><div class="ph-sl">Day Streak</div></div><div class="ph-s"><div class="ph-sv" id="prog-gained">+0</div><div class="ph-sl">kg Gained</div></div><div class="ph-s"><div class="ph-sv" id="prog-total-wo">0</div><div class="ph-sl">Workouts</div></div></div></div>
@@ -1388,7 +1388,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       </div>
 
   <!-- PROFILE -->
-  <div id="sc-profile" style="display:none;flex-direction:column;height:100%;">
+  <div id="sc-profile" style="display:none;flex-direction:column;flex:1;min-height:0;">
     <div style="padding:16px 18px 7px;flex-shrink:0;"><div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;">Profile 👤</div></div>
     <div class="scroll pad">
       <div class="av-section"><div class="av-circle">💪</div><div class="av-name" id="prof-name">Champ</div><div style="font-size:11px;opacity:.78;margin-top:2px;">Goal: Muscle Gain · Bulking</div><div class="av-pills"><div class="av-pill" id="prof-lv">Level 1 · Rookie</div><div class="av-pill" id="prof-str">🔥 0 day streak</div><div class="av-pill" id="prof-rank-pill">🏆 #—</div></div></div>
