@@ -811,10 +811,10 @@ renderObProg();
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overscroll-behavior:none;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;display:flex;justify-content:center;overflow:hidden;}
-.app{width:100%;max-width:430px;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:var(--bg);}
-.page{position:absolute;top:0;left:0;right:0;bottom:65px;display:none;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}
+.app{width:100%;max-width:430px;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:var(--bg);overflow:hidden;}
+.page{position:absolute;top:0;left:0;right:0;bottom:0;padding-bottom:65px;display:none;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}
 .page.active{display:flex;opacity:1;pointer-events:all;transform:translateY(0);z-index:10;}
-.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:20px;}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:30px;}
 .scroll::-webkit-scrollbar{display:none;}
 .pad{padding:0 18px;}
 .bnav{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1.5px solid var(--border);display:flex;padding:8px 0 max(20px,env(safe-area-inset-bottom));z-index:1000;box-shadow:0 -4px 24px rgba(0,0,0,.07);}
@@ -1263,7 +1263,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       </div>
       <div class="card">
         <div class="section-head"><div class="section-title">📊 This Week</div><div class="pill pill-primary" id="d-week-pill">0 workouts</div></div>
-        <div class="chart-wrap" id="home-chart"></div>
+        <div class="chart-wrap" id="home-chart"></div><div style="height:30px;"></div>
       </div>
     </div>
       </div>
