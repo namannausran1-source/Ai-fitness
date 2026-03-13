@@ -65,7 +65,7 @@ const db = firebase.firestore();
    All mutable state lives here. Reset on logout via defUser()/defGS().
 ═══════════════════════════════════════════════════ */
 let currentUID=null, lbUnsub=null, _appReady=false;
-const defGS=()=>({xp:0,level:1,streak:0,calLogged:0,proLogged:0,weeklyWo:[0,0,0,0,0,0,0],totalWo:0,lastWorkoutDate:'',weeklyPts:0,allTimePts:0,habitStreak:0,lastHabitDay:'',challengeProgress:{},lastCalDay:'',lastWeightDay:'',wosToday:0,mealLogsToday:0,lastMealLogDate:''});
+const defGS=()=>({xp:0,level:1,streak:0,calLogged:0,proLogged:0,weeklyWo:[0,0,0,0,0,0,0],totalWo:0,lastWorkoutDate:'',weeklyPts:0,allTimePts:0,habitStreak:0,lastHabitDay:'',challengeProgress:{},lastCalDay:'',lastWeightDay:'',wosToday:0,mealLogsToday:0,lastMealLogDate:'',lastChallengeWeek:''});
 const defUser=()=>({name:'Champ',weight:'60',height:'175',age:'18',level:'Never worked out',calories:2500,protein:150,avatar:'💪'});
 let user=defUser(),gs=defGS();
 let tasksDone=new Set(),recentWorkouts=[],weightLog=[],bodyStats={chest:'',arm:''};
@@ -90,6 +90,14 @@ async function loadFS(uid){
       if(d.user)Object.assign(user,d.user);
       if(d.gs){Object.assign(gs,d.gs);if(!gs.challengeProgress)gs.challengeProgress={};if(!Array.isArray(gs.weeklyWo)||gs.weeklyWo.length!==7)gs.weeklyWo=[0,0,0,0,0,0,0];}
       const todayStr=new Date().toLocaleDateString('en-GB');
+      // Reset weekly challenge progress every Monday
+      const weekStart=new Date();weekStart.setDate(weekStart.getDate()-(weekStart.getDay()||7)+1);
+      const weekKey=weekStart.toLocaleDateString('en-GB');
+      if(gs.lastChallengeWeek!==weekKey){
+        gs.lastChallengeWeek=weekKey;
+        gs.challengeProgress.proteinDays=0;
+        gs.challengeProgress.habitDays=0;
+      }
       if(d.tasksDone&&d.gs?.lastHabitDay===todayStr)tasksDone=new Set(d.tasksDone);else tasksDone=new Set();
       // Reset cal/pro if new day
       if(d.gs?.lastCalDay!==todayStr){gs.calLogged=0;gs.proLogged=0;gs.lastCalDay=todayStr;}
@@ -98,6 +106,15 @@ async function loadFS(uid){
       if(d.bodyStats)Object.assign(bodyStats,d.bodyStats);
       if(d.photos&&Array.isArray(d.photos))photos=d.photos;
       if(d.muscleFocus)Object.assign(muscleFocus,d.muscleFocus);
+      // Decay muscle focus 5% per day since last workout
+      if(gs.lastWorkoutDate){
+        const lastWo=new Date(gs.lastWorkoutDate.split('/').reverse().join('-'));
+        const daysSince=Math.floor((new Date()-lastWo)/(1000*60*60*24));
+        if(daysSince>0){
+          const decay=daysSince*5;
+          Object.keys(muscleFocus).forEach(k=>{muscleFocus[k]=Math.max(0,(muscleFocus[k]||0)-decay);});
+        }
+      }
       return true;
     }return false;
   }catch(e){console.error('loadFS:',e);return false;}
@@ -254,6 +271,11 @@ function subscribeLB(){
   lbUnsub=onSnapshot(collection(db,'users'),snap=>{
     window._lbData=snap.docs.map(d=>{const dt=d.data();return{uid:d.id,name:dt.user?.name||'Player',avatar:dt.user?.avatar||'💪',weeklyPts:dt.gs?.weeklyPts||0,allTimePts:dt.gs?.allTimePts||0,streak:dt.gs?.streak||0,habitStreak:dt.gs?.habitStreak||0,totalWo:dt.gs?.totalWo||0,level:dt.gs?.level||1};});
     if(g('lb-weekly-list'))renderLeaderboard();
+    // Refresh rank in profile and home whenever LB data updates
+    const rk=myRank();
+    const rv=g('prof-rank-val');if(rv)rv.textContent=rk>0?'#'+rk:'—';
+    const rp=g('prof-rank-pill');if(rp)rp.textContent='🏆 #'+(rk>0?rk:'—');
+    const dr=g('d-rank');if(dr)dr.textContent=rk>0?'#'+rk:'—';
   },e=>console.error('LB error:',e));
 }
 
@@ -750,7 +772,13 @@ window.switchTab=function(t){
   if(t==='leaderboard')renderLeaderboard();
   if(t==='workout')renderRecent();
   if(t==='progress')buildProgress();
-  if(t==='profile')buildAchievements();
+  if(t==='profile'){
+    buildAchievements();
+    // Refresh rank now that LB data may have arrived
+    const rk=myRank();
+    const rv=g('prof-rank-val');if(rv)rv.textContent=rk>0?'#'+rk:'—';
+    const rp=g('prof-rank-pill');if(rp)rp.textContent='🏆 #'+(rk>0?rk:'—');
+  }
 };
 
 renderObProg();
@@ -786,10 +814,10 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 .app{width:100%;max-width:430px;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:var(--bg);}
 .page{position:absolute;inset:0;display:none;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}
 .page.active{display:flex;opacity:1;pointer-events:all;transform:translateY(0);z-index:10;}
-.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:160px;}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:calc(280px + env(safe-area-inset-bottom, 0px));}
 .scroll::-webkit-scrollbar{display:none;}
 .pad{padding:0 18px;}
-.bnav{position:absolute;bottom:0;left:0;right:0;background:var(--white);border-top:1.5px solid var(--border);display:flex;padding:8px 0 max(16px,env(safe-area-inset-bottom));z-index:100;box-shadow:0 -4px 24px rgba(0,0,0,.07);}
+.bnav{position:absolute;bottom:0;left:0;right:0;background:var(--white);border-top:1.5px solid var(--border);display:flex;padding:8px 0 max(20px,env(safe-area-inset-bottom));z-index:100;box-shadow:0 -4px 24px rgba(0,0,0,.07);}
 .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;padding:3px 1px;transition:transform .15s;}
 .bn-item:active{transform:scale(.85);}
 .bn-icon{font-size:20px;line-height:1;transition:transform .2s;}
