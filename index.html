@@ -4,17 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>BulkUp</title>
-<!-- BUILD v3 -->
+<!-- BUILD v4 — clean structured version -->
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#4f46e5">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Firebase SDKs (compat v9) -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
 <script>
-/* ═══════════════════════════════════════════
+/* ═══════════════════════════════════════════════════
    SECTION 1 — FIREBASE COMPAT WRAPPERS
-═══════════════════════════════════════════ */
+   Maps modern v9 calls onto the compat SDK.
+═══════════════════════════════════════════════════ */
 const { initializeApp, getApp } = { initializeApp: (cfg) => firebase.initializeApp(cfg), getApp: () => firebase.app() };
 const getAuth = () => firebase.auth();
 const getFirestore = () => firebase.firestore();
@@ -36,9 +40,10 @@ const limit = (n) => q => q.limit(n);
 const onSnapshot = (q, cb, err) => q.onSnapshot(cb, err);
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 2 — FIREBASE CONFIG & INIT
-═══════════════════════════════════════════ */
+═══════════════════════════════════════════════════ */
 const firebaseConfig = {
   apiKey: "AIzaSyBEl9WDAytaCyfadgOiSQdyOSWUdmcVK9M",
   authDomain: "bulk-c417d.firebaseapp.com",
@@ -54,13 +59,13 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 3 — APP STATE
-   All mutable state lives here.
-   Reset via defUser() / defGS() on logout.
-═══════════════════════════════════════════ */
+   All mutable state lives here. Reset on logout via defUser()/defGS().
+═══════════════════════════════════════════════════ */
 let currentUID=null, lbUnsub=null, _appReady=false;
-const defGS=()=>({xp:0,level:1,streak:0,calLogged:0,proLogged:0,weeklyWo:[0,0,0,0,0,0,0],totalWo:0,lastWorkoutDate:'',weeklyPts:0,allTimePts:0,habitStreak:0,lastHabitDay:'',challengeProgress:{}});
+const defGS=()=>({xp:0,level:1,streak:0,calLogged:0,proLogged:0,weeklyWo:[0,0,0,0,0,0,0],totalWo:0,lastWorkoutDate:'',weeklyPts:0,allTimePts:0,habitStreak:0,lastHabitDay:'',challengeProgress:{},lastCalDay:'',lastWeightDay:'',wosToday:0,mealLogsToday:0,lastMealLogDate:''});
 const defUser=()=>({name:'Champ',weight:'60',height:'175',age:'18',level:'Never worked out',calories:2500,protein:150,avatar:'💪'});
 let user=defUser(),gs=defGS();
 let tasksDone=new Set(),recentWorkouts=[],weightLog=[],bodyStats={chest:'',arm:''};
@@ -68,9 +73,10 @@ let photos=['','',''],muscleFocus={chest:0,back:0,legs:0,core:0,shoulders:0,arms
 let selectedChips=new Set(),obStep=1,obLevel='';
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 4 — FIRESTORE: SAVE & LOAD
-═══════════════════════════════════════════ */
+═══════════════════════════════════════════════════ */
 async function saveFS(){
   if(!currentUID||!_appReady)return;
   try{await setDoc(doc(db,'users',currentUID),{user:{...user},gs:{...gs},tasksDone:[...tasksDone],recentWorkouts,weightLog,bodyStats,photos,muscleFocus,updatedAt:serverTimestamp()},{merge:true});}
@@ -85,6 +91,8 @@ async function loadFS(uid){
       if(d.gs){Object.assign(gs,d.gs);if(!gs.challengeProgress)gs.challengeProgress={};if(!Array.isArray(gs.weeklyWo)||gs.weeklyWo.length!==7)gs.weeklyWo=[0,0,0,0,0,0,0];}
       const todayStr=new Date().toLocaleDateString('en-GB');
       if(d.tasksDone&&d.gs?.lastHabitDay===todayStr)tasksDone=new Set(d.tasksDone);else tasksDone=new Set();
+      // Reset cal/pro if new day
+      if(d.gs?.lastCalDay!==todayStr){gs.calLogged=0;gs.proLogged=0;gs.lastCalDay=todayStr;}
       if(d.recentWorkouts)recentWorkouts=d.recentWorkouts;
       if(d.weightLog)weightLog=d.weightLog;
       if(d.bodyStats)Object.assign(bodyStats,d.bodyStats);
@@ -96,11 +104,11 @@ async function loadFS(uid){
 }
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 5 — AUTH BOOT SEQUENCE
-   Hides all pages until Firebase resolves
-   auth state. Falls back to login after 800ms.
-═══════════════════════════════════════════ */
+   Hides all pages until Firebase resolves. Falls back to login after 800ms.
+═══════════════════════════════════════════════════ */
 // Hide all pages initially — show loading spinner, let onAuthStateChanged decide
 (function(){
   ['page-auth','page-ob','page-app'].forEach(function(id){
@@ -130,7 +138,12 @@ onAuthStateChanged(auth,async(fu)=>{
     if(!exists){
       _appReady=false; // Don't save until onboarding is complete
       const po=g('page-ob');if(po){po.classList.add('active');po.style.display='flex';}
-      obStep=1;renderObProg();
+      obStep=1;
+
+/* ═══════════════════════════════════════════════════
+   SECTION 19 — GLOBAL INIT & EXPORTS
+═══════════════════════════════════════════════════ */
+renderObProg();
       document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('show'));
       g('obs1').classList.add('show');
     }else{const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}setTimeout(()=>{try{initApp();switchTab('home');saveFS();}catch(e){console.error(e);}},350);}
@@ -144,10 +157,11 @@ onAuthStateChanged(auth,async(fu)=>{
 // Auth state is handled entirely by onAuthStateChanged above
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 6 — AUTH UI
-   Login / Signup / Google / Logout
-═══════════════════════════════════════════ */
+   Login / Signup / Google Sign-In / Logout
+═══════════════════════════════════════════════════ */
 const GOOGLE_BTN_HTML=`<svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.34-8.16 2.34-6.26 0-11.57-3.59-13.46-8.66l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Continue with Google`;
 
 function showAuthErr(msg){const e=g('auth-err');e.textContent=msg;e.style.display='block';}
@@ -231,9 +245,10 @@ window.doLogout=function(){
 };
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 7 — LEADERBOARD SUBSCRIPTION
-═══════════════════════════════════════════ */
+═══════════════════════════════════════════════════ */
 function subscribeLB(){
   if(lbUnsub){lbUnsub();lbUnsub=null;}
   lbUnsub=onSnapshot(collection(db,'users'),snap=>{
@@ -243,16 +258,18 @@ function subscribeLB(){
 }
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 8 — UTILITY HELPERS
-═══════════════════════════════════════════ */
+═══════════════════════════════════════════════════ */
 function g(id){return document.getElementById(id);}
 window.showToast=function(msg){const t=g('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.remove('show'),2600);};
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 9 — ONBOARDING
-═══════════════════════════════════════════ */
+═══════════════════════════════════════════════════ */
 window.renderObProg=function(){
   g('ob-prog').innerHTML=Array.from({length:4},(_,i)=>{const n=i+1;return`<div class="ob-dot-p${n<obStep?' d':n===obStep?' a':''}"></div>`;}).join('');
 };
@@ -269,10 +286,12 @@ window.enterApp=async function(){const po=g('page-ob');if(po){po.classList.remov
 function calcTargets(){const w=parseFloat(user.weight)||60;user.calories=Math.round(w*40+300);user.protein=Math.round(w*2.2);}
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 10 — XP & LEVELLING
-   Levels: Rookie→Grinder→Builder→Beast→Legend
-═══════════════════════════════════════════ */
+   Levels: Rookie → Grinder → Builder → Beast → Legend
+   Anti-hack: XP awarded once per day per action.
+═══════════════════════════════════════════════════ */
 const LVL=[{t:'Rookie',n:500},{t:'Grinder',n:1200},{t:'Builder',n:2500},{t:'Beast',n:5000},{t:'Legend',n:10000}];
 function lvlInfo(){
   let li=0;for(let i=0;i<LVL.length;i++){if(gs.xp>=LVL[i].n)li=i+1;else break;}
@@ -300,39 +319,27 @@ window.addXP=function(n,lbl){
 function myRank(){if(!window._lbData||!currentUID)return 0;const s=[...window._lbData].sort((a,b)=>b.weeklyPts-a.weeklyPts);const i=s.findIndex(p=>p.uid===currentUID);return i>=0?i+1:0;}
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 11 — APP INIT
    Called after login or onboarding completes.
-═══════════════════════════════════════════ */
+═══════════════════════════════════════════════════ */
 function initApp(){
   const hr=new Date().getHours();
   g('d-name').textContent=`Hey, ${user.name}! 👋`;
-  // Restore meal button state on load
-  _updateMealBtn();
   g('d-sub').textContent=hr<12?'Good morning! Eat that breakfast 🌅':hr<17?'Keep hitting those calories 💪':'Evening grind. Don\'t skip dinner 🌙';
   updateXP();updateRings();drawChart();buildTasks();renderWoPlans('home');renderRecent();buildAchievements();subscribeLB();
-}
-
-function _updateMealBtn(){
-  const MEAL_LIMIT = 3;
-  const used = gs.mealPlansUsed || 0;
-  const remaining = MEAL_LIMIT - used;
-  const btn = g('m-btn');
-  if(!btn) return;
-  if(remaining <= 0){
-    btn.disabled = true;
-    btn.textContent = `🔒 Limit Reached (${used}/${MEAL_LIMIT})`;
-  } else {
-    btn.disabled = false;
-    btn.textContent = `🍽️ Build My Meal Plan (${remaining} left)`;
-  }
+  // Restore meal button state
+  const _used=gs.mealPlansUsed||0,_lim=3,_rem=_lim-_used;
+  const _mb=g('m-btn');if(_mb){if(_rem<=0){_mb.disabled=true;_mb.textContent='🔒 Limit Reached ('+_used+'/'+_lim+')';}else if(_used>0)_mb.textContent='🍽️ Build My Meal Plan ('+_rem+' left)';}
 }
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 12 — HOME TAB
    Rings, weekly chart, habit tasks, quick log
-═══════════════════════════════════════════ */
+═══════════════════════════════════════════════════ */
 function updateRings(){
   const C=176,cp=Math.min(Math.round(gs.calLogged/user.calories*100),100),pp=Math.min(Math.round(gs.proLogged/user.protein*100),100);
   setTimeout(()=>{g('ring-cal').style.strokeDashoffset=C-(C*cp/100);g('ring-pro').style.strokeDashoffset=C-(C*pp/100);},300);
@@ -361,8 +368,18 @@ function buildTasks(){
 }
 window.toggleTask=function(id,el){
   const t=TASKS.find(x=>x.id===id);
-  if(tasksDone.has(id)){tasksDone.delete(id);el.classList.remove('done');el.textContent='';gs.xp=Math.max(0,gs.xp-t.xp);gs.weeklyPts=Math.max(0,gs.weeklyPts-t.pts);updateXP();}
-  else{tasksDone.add(id);el.classList.add('done');el.textContent='✓';addXP(t.xp,'Habit done');}
+  const today=new Date().toLocaleDateString('en-GB');
+  if(tasksDone.has(id)){
+    // Allow untoggle UI but NO XP refund (anti-hack)
+    tasksDone.delete(id);el.classList.remove('done');el.textContent='';
+    buildTasks();saveFS();return;
+  }
+  // Only award XP once per day per task
+  if(!gs.habitXpDay)gs.habitXpDay={};
+  const alreadyAwarded=gs.habitXpDay[id]===today;
+  tasksDone.add(id);el.classList.add('done');el.textContent='✓';
+  if(!alreadyAwarded){gs.habitXpDay[id]=today;addXP(t.xp,'Habit done');}
+  else showToast('✅ '+t.nm+' done!');
   buildTasks();saveFS();
 };
 function checkHabit(){
@@ -371,16 +388,25 @@ function checkHabit(){
 window.quickLog=function(){
   const c=parseInt(g('ql-cal').value)||0,p=parseInt(g('ql-pro').value)||0;
   if(!c&&!p){showToast('⚠️ Enter calories or protein');return;}
+  const today=new Date().toLocaleDateString('en-GB');
+  gs.mealLogsToday=gs.lastMealLogDate===today?(gs.mealLogsToday||0):0;
+  if(gs.mealLogsToday>=5){showToast('⚠️ Max 5 meal logs per day!');return;}
+  gs.mealLogsToday=(gs.mealLogsToday||0)+1;
+  gs.lastMealLogDate=today;
+  const xpAlreadyAwarded=gs.lastCalDay===today;
   gs.calLogged=Math.min(gs.calLogged+c,Math.round(user.calories*1.5));
   gs.proLogged=Math.min(gs.proLogged+p,Math.round(user.protein*1.5));
+  gs.lastCalDay=today;
   if(gs.proLogged>=user.protein)gs.challengeProgress.proteinDays=(gs.challengeProgress.proteinDays||0)+1;
-  g('ql-cal').value='';g('ql-pro').value='';updateRings();addXP(10,'Meal logged');saveFS();
+  g('ql-cal').value='';g('ql-pro').value='';updateRings();
+  if(!xpAlreadyAwarded)addXP(10,'Meal logged');else{showToast('✅ Logged!');saveFS();}
 };
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 13 — LEADERBOARD RENDERING
-═══════════════════════════════════════════ */
+═══════════════════════════════════════════════════ */
 window.switchLbTab=function(t){
   ['weekly','alltime','habits','challenges'].forEach(id=>{g('lb-'+id).style.display=id===t?'block':'none';const tab=g('lbt-'+id);if(tab)tab.classList.toggle('a',id===t);});
   renderLeaderboard();
@@ -435,9 +461,11 @@ function buildChallenges(){
 }
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 14 — WORKOUT PLANS & ACTIVE WORKOUT
-═══════════════════════════════════════════ */
+   Anti-hack: XP once per day total. Max 2 workouts/day.
+═══════════════════════════════════════════════════ */
 const HOME_PLANS=[
   {id:'h1',nm:'Full Body Starter',icon:'🧍',bg:'#eef2ff',cal:120,dur:20,diff:'Beginner',dc:'var(--primary)',exs:[{nm:'Jumping Jacks',icon:'🙆',sets:3,reps:'20 reps',tip:'Warm up your whole body.',ms:'Full Body'},{nm:'Knee Push-Ups',icon:'💪',sets:3,reps:'10 reps',tip:'Chest to floor every rep.',ms:'Chest & Arms'},{nm:'Bodyweight Squats',icon:'🦵',sets:3,reps:'15 reps',tip:'Sit back like a chair.',ms:'Legs'},{nm:'Glute Bridges',icon:'🌉',sets:3,reps:'15 reps',tip:'Squeeze glutes at top.',ms:'Glutes'},{nm:'Plank Hold',icon:'🧱',sets:3,reps:'20 sec',tip:'Straight line, breathe!',ms:'Core'}]},
   {id:'h2',nm:'Upper Body Pump',icon:'💪',bg:'#fff7ed',cal:160,dur:30,diff:'Intermediate',dc:'var(--orange)',exs:[{nm:'Wide Push-Ups',icon:'🤜',sets:4,reps:'12 reps',tip:'Hands wider than shoulders.',ms:'Chest'},{nm:'Diamond Push-Ups',icon:'💎',sets:3,reps:'8 reps',tip:'Triceps fire!',ms:'Triceps'},{nm:'Pike Push-Ups',icon:'🔻',sets:3,reps:'10 reps',tip:'Hips high.',ms:'Shoulders'},{nm:'Superman Hold',icon:'🦸',sets:3,reps:'15 reps',tip:'Lift arms and legs simultaneously.',ms:'Back'},{nm:'Chair Dips',icon:'🪑',sets:3,reps:'12 reps',tip:'Elbows straight back.',ms:'Triceps'}]},
@@ -482,17 +510,30 @@ function completeWorkout(){
   g('cs-min').textContent=mins;g('cs-cal').textContent=cal;g('cs-sets').textContent=totalSetsDone;g('cs-xp').textContent=`+${xpE} XP · +${pts} pts`;
   g('comp-sub').textContent=`"${aw.nm}" — ${mins} mins. Saved! 🔥`;
   g('completeOverlay').classList.add('show');
+  const today=new Date().toLocaleDateString('en-GB');
+  // Limit to 2 workouts per day
+  gs.wosToday=gs.lastWorkoutDate===today?(gs.wosToday||0):0;
+  if(gs.wosToday>=2){showToast('💪 Max 2 workouts per day!');g('completeOverlay').classList.remove('show');g('wo-overlay').classList.remove('show');aw=null;return;}
+  gs.wosToday=(gs.wosToday||0)+1;
+  // XP only once per day total — regardless of which plan
+  const xpAlreadyGiven=gs.lastWoXpDay===today;
+  gs.lastWoXpDay=today;
   gs.totalWo++;gs.weeklyPts+=pts;gs.allTimePts+=pts;gs.challengeProgress.totalWo=gs.totalWo;
   gs.calLogged=Math.min(gs.calLogged+Math.round(cal*0.25),Math.round(user.calories*1.5));
   const ti=(new Date().getDay()+6)%7;gs.weeklyWo[ti]+=1;
-  const today=new Date().toLocaleDateString('en-GB');
   if(gs.lastWorkoutDate!==today){gs.streak++;gs.lastWorkoutDate=today;}
   gs.challengeProgress.streak=gs.streak;
   aw.exs.forEach(e=>{const ms=e.ms.toLowerCase();if(ms.includes('chest'))muscleFocus.chest=Math.min((muscleFocus.chest||0)+14,100);if(ms.includes('back')||ms.includes('lat'))muscleFocus.back=Math.min((muscleFocus.back||0)+14,100);if(ms.includes('leg')||ms.includes('quad')||ms.includes('glute'))muscleFocus.legs=Math.min((muscleFocus.legs||0)+14,100);if(ms.includes('core'))muscleFocus.core=Math.min((muscleFocus.core||0)+14,100);if(ms.includes('shoulder'))muscleFocus.shoulders=Math.min((muscleFocus.shoulders||0)+14,100);if(ms.includes('arm')||ms.includes('bicep')||ms.includes('tricep'))muscleFocus.arms=Math.min((muscleFocus.arms||0)+14,100);if(ms.includes('full body'))Object.keys(muscleFocus).forEach(k=>muscleFocus[k]=Math.min((muscleFocus[k]||0)+8,100));});
   if(!tasksDone.has('t3'))tasksDone.add('t3');
   recentWorkouts.unshift({nm:aw.nm,mins,cal,date:today,icon:aw.icon,bg:aw.bg});
   if(recentWorkouts.length>5)recentWorkouts.pop();
-  addXP(xpE,'Workout done');saveFS();
+  // Store in workoutDates for calendar (persistent full history)
+  if(!gs.workoutDates)gs.workoutDates=[];
+  if(!gs.workoutDates.includes(today))gs.workoutDates.push(today);
+  if(gs.workoutDates.length>90)gs.workoutDates=gs.workoutDates.slice(-90);
+  // Only award XP once per day
+  if(!xpAlreadyGiven)addXP(xpE,'Workout done');
+  else{showToast('💪 Workout saved! XP already earned today.');saveFS();}
 }
 window.finishWorkout=function(){g('completeOverlay').classList.remove('show');g('wo-overlay').classList.remove('show');aw=null;renderRecent();updateXP();updateRings();drawChart();buildTasks();buildAchievements();switchTab('home');};
 window.confirmStop=function(){if(confirm('Stop workout?')){clearInterval(woTmr);clearInterval(restTmr);g('restOverlay').classList.remove('show');g('wo-overlay').classList.remove('show');aw=null;}};
@@ -502,29 +543,28 @@ function renderRecent(){
   el.innerHTML=recentWorkouts.map(w=>`<div class="recent-item"><div class="ri-ico" style="background:${w.bg||'var(--pl)'}">${w.icon}</div><div class="ri-inf"><div class="ri-nm">${w.nm}</div><div class="ri-meta">⏱ ${w.mins} min · 🔥 ${w.cal} kcal</div></div><div class="ri-date">${w.date}</div></div>`).join('');
 }
 
-
-/* ═══════════════════════════════════════════
-   SECTION 15 — MEAL PLANNER
-   AI-powered via Netlify Function /api/claude
-   Auth token sent in Authorization header.
-═══════════════════════════════════════════ */
 /* ══ MEAL — SECURED VIA NETLIFY FUNCTION 🔒 ══ */
+
+
+/* ═══════════════════════════════════════════════════
+   SECTION 15 — MEAL PLANNER
+   AI via Netlify Function /api/claude (Gemini 2.0 Flash)
+   Beta limit: 3 lifetime generations per user.
+═══════════════════════════════════════════════════ */
 window.genMeal=async function(){
   const ing=g('m-ing').value.trim(),err=g('m-err');
   err.classList.remove('show');
   if(!ing){err.textContent='⚠️ Add some ingredients first!';err.classList.add('show');return;}
-
-  // ── Meal plan limit check (3 lifetime per user) ──
-  const MEAL_LIMIT = 3;
-  const usedCount = gs.mealPlansUsed || 0;
-  if(usedCount >= MEAL_LIMIT){
-    err.textContent = `🔒 Beta limit reached (${MEAL_LIMIT}/${MEAL_LIMIT} meal plans used). Thanks for testing!`;
+  // 3 lifetime meal plan limit (beta)
+  const MEAL_LIMIT=3;
+  const used=gs.mealPlansUsed||0;
+  if(used>=MEAL_LIMIT){
+    err.textContent='🔒 Beta limit reached ('+used+'/'+MEAL_LIMIT+' meal plans used). Thanks for testing!';
     err.classList.add('show');
-    g('m-btn').disabled = true;
-    g('m-btn').textContent = `🔒 Limit Reached (${usedCount}/${MEAL_LIMIT})`;
+    g('m-btn').disabled=true;
+    g('m-btn').textContent='🔒 Limit Reached ('+used+'/'+MEAL_LIMIT+')';
     return;
   }
-
   g('m-btn').disabled=true;g('m-load').classList.add('vis');g('m-result').classList.remove('vis');g('m-regen').style.display='none';
   const prompt=`You are a bulking nutrition coach. Create a full day meal plan for ${user.name} who weighs ${user.weight}kg, is ${user.age} years old, and needs ${user.calories} kcal and ${user.protein}g protein daily. Use these ingredients: ${ing}.\n\nUse EXACTLY this format (no emojis in section headers):\n\nBREAKFAST\n[meal description]\n~[number] kcal\n\nMID-MORNING SNACK\n[meal description]\n~[number] kcal\n\nLUNCH\n[meal description]\n~[number] kcal\n\nEVENING SNACK\n[meal description]\n~[number] kcal\n\nDINNER\n[meal description]\n~[number] kcal\n\nBEFORE BED\n[meal description]\n~[number] kcal\n\nMACROS SUMMARY\nProtein: ~[number]g\nCarbs: ~[number]g\nFats: ~[number]g\n\nCOACH NOTE\n[2 motivating sentences for someone trying to bulk up]`;
   try{
@@ -567,17 +607,10 @@ function renderMeal(text){
   });
   if(!h)h=`<div style="font-size:12px;line-height:1.75;white-space:pre-wrap;color:var(--text);">${text}</div>`;
   g('m-meals').innerHTML=h;g('m-result').classList.add('vis');g('m-regen').style.display='block';
-  // Increment usage counter and update button label
-  gs.mealPlansUsed = (gs.mealPlansUsed || 0) + 1;
-  const MEAL_LIMIT = 3;
-  const remaining = MEAL_LIMIT - gs.mealPlansUsed;
-  if(remaining <= 0){
-    g('m-btn').disabled = true;
-    g('m-btn').textContent = `🔒 Limit Reached (${gs.mealPlansUsed}/${MEAL_LIMIT})`;
-    g('m-regen').style.display = 'none';
-  } else {
-    g('m-btn').textContent = `🍽️ Build My Meal Plan (${remaining} left)`;
-  }
+  gs.mealPlansUsed=(gs.mealPlansUsed||0)+1;
+  const MEAL_LIMIT=3,remaining=MEAL_LIMIT-gs.mealPlansUsed;
+  if(remaining<=0){g('m-btn').disabled=true;g('m-btn').textContent='🔒 Limit Reached ('+gs.mealPlansUsed+'/'+MEAL_LIMIT+')';g('m-regen').style.display='none';}
+  else g('m-btn').textContent='🍽️ Build My Meal Plan ('+remaining+' left)';
   addXP(20,'Meal plan');saveFS();
 }
 window.toggleChip=function(el,food){
@@ -587,9 +620,10 @@ window.toggleChip=function(el,food){
 };
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 16 — PROGRESS TAB
-═══════════════════════════════════════════ */
+═══════════════════════════════════════════════════ */
 function buildProgress(){buildProgHero();buildWeightChart();buildBodyGrid();buildCalendar();buildMuscleBars();buildPhotoGrid();buildMilestones();}
 function buildProgHero(){
   g('prog-title').textContent=`Keep Going, ${user.name}! 🔥`;
@@ -598,6 +632,9 @@ function buildProgHero(){
   else{g('prog-gained').textContent='+0';g('prog-sub').textContent='Log your weight daily to track your bulk.';}
 }
 window.logWeight=function(){
+  const todayKey=new Date().toLocaleDateString('en-GB');
+  if(gs.lastWeightLogDate===todayKey){showToast('⚖️ Weight already logged today!');return;}
+  gs.lastWeightLogDate=todayKey;
   const v=parseFloat(g('wl-in').value);
   if(!v||v<20||v>300){showToast('⚠️ Enter valid weight (20–300 kg)');return;}
   const today=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
@@ -632,10 +669,17 @@ function buildBodyGrid(){
 function buildCalendar(){
   const now=new Date(),yr=now.getFullYear(),mo=now.getMonth(),today=now.getDate();
   const firstDay=(new Date(yr,mo,1).getDay()+6)%7,dim=new Date(yr,mo+1,0).getDate();
-  const woSet=new Set(recentWorkouts.map(w=>w.date));
+  // Use gs.workoutDates for full history (not just recent 5)
+  const woSet=new Set(gs.workoutDates||[]);
+  // Also add dates from recentWorkouts as fallback
+  recentWorkouts.forEach(w=>{if(w.date)woSet.add(w.date);});
   let h=['M','T','W','T','F','S','S'].map(d=>`<div class="cd-lbl">${d}</div>`).join('');
   for(let i=0;i<firstDay;i++)h+=`<div class="cd empty"></div>`;
-  for(let d=1;d<=dim;d++){const ds=new Date(yr,mo,d).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});let cls=d<today?woSet.has(ds)?'workout':'missed':d===today?'today':'future';h+=`<div class="cd ${cls}">${d}</div>`;}
+  for(let d=1;d<=dim;d++){
+    const ds=new Date(yr,mo,d).toLocaleDateString('en-GB');
+    let cls=d<today?woSet.has(ds)?'workout':'missed':d===today?'today':'future';
+    h+=`<div class="cd ${cls}">${d}</div>`;
+  }
   g('cal-grid').innerHTML=h;
 }
 const MDEF=[{l:'🦵 Legs',k:'legs',c:'#22c55e'},{l:'💪 Chest',k:'chest',c:'#4f46e5'},{l:'🔙 Back',k:'back',c:'#f97316'},{l:'🧱 Core',k:'core',c:'#eab308'},{l:'🤜 Arms',k:'arms',c:'#a855f7'},{l:'☝️ Shoulders',k:'shoulders',c:'#ef4444'}];
@@ -675,9 +719,10 @@ function buildMilestones(){
 }
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 17 — ACHIEVEMENTS
-═══════════════════════════════════════════ */
+═══════════════════════════════════════════════════ */
 const ACHIEVE=[
   {i:'🔥',n:'3-Day Streak',u:()=>gs.streak>=3,bg:'#fff7ed'},
   {i:'💪',n:'First Workout',u:()=>gs.totalWo>=1,bg:'#eef2ff'},
@@ -693,9 +738,10 @@ function buildAchievements(){
 }
 
 
-/* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════════════
    SECTION 18 — TAB NAVIGATION
-═══════════════════════════════════════════ */
+═══════════════════════════════════════════════════ */
 const TABS=['home','workout','leaderboard','meal','progress','profile'];
 window.switchTab=function(t){
   TABS.forEach(s=>{const sc=g('sc-'+s);if(sc)sc.style.display=s===t?'flex':'none';});
@@ -705,16 +751,10 @@ window.switchTab=function(t){
   if(t==='workout')renderRecent();
   if(t==='progress')buildProgress();
   if(t==='profile')buildAchievements();
-  if(t==='meal')_updateMealBtn();
 };
 
 renderObProg();
 
-
-/* ═══════════════════════════════════════════
-   SECTION 19 — EXPOSE GLOBALS
-   onclick="" in HTML runs in global scope.
-═══════════════════════════════════════════ */
 // ── Expose every function as true window global ──────────────────────────
 // Needed because onclick="" in HTML runs in global scope, not module scope.
 [['showAuthTab',window.showAuthTab],['doEmailLogin',window.doEmailLogin],
@@ -734,9 +774,11 @@ renderObProg();
 ].forEach(([name,fn])=>{ if(fn) window[name]=fn; });
 // ────────────────────────────────────────────────────────────────────────
 </script>
-<style>
 
-/* ═══ CSS VARIABLES ═══════════════════════ */
+<style>
+/* ═══════════════════════════════════════════════════
+   STYLES
+═══════════════════════════════════════════════════ */
 :root{--bg:#f7f9fc;--white:#fff;--surface:#f0f4ff;--primary:#4f46e5;--pl:#eef2ff;--pd:#3730a3;--pm:#6366f1;--green:#22c55e;--gl:#f0fdf4;--gd:#16a34a;--orange:#f97316;--ol:#fff7ed;--red:#ef4444;--rl:#fef2f2;--yellow:#eab308;--yl:#fefce8;--purple:#a855f7;--pul:#faf5ff;--text:#1e293b;--muted:#64748b;--muted2:#cbd5e1;--border:#e2e8f0;--shadow:0 1px 3px rgba(0,0,0,.07),0 4px 16px rgba(0,0,0,.05);--shadow-lg:0 8px 32px rgba(79,70,229,.18);--radius:20px;--radius-sm:14px;--radius-xs:10px;}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overscroll-behavior:none;}
@@ -744,7 +786,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 .app{width:100%;max-width:430px;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:var(--bg);}
 .page{position:absolute;inset:0;display:none;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}
 .page.active{display:flex;opacity:1;pointer-events:all;transform:translateY(0);z-index:10;}
-.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:130px;}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:160px;}
 .scroll::-webkit-scrollbar{display:none;}
 .pad{padding:0 18px;}
 .bnav{position:absolute;bottom:0;left:0;right:0;background:var(--white);border-top:1.5px solid var(--border);display:flex;padding:8px 0 max(16px,env(safe-area-inset-bottom));z-index:100;box-shadow:0 -4px 24px rgba(0,0,0,.07);}
@@ -848,7 +890,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 .task-sub{font-size:10px;color:var(--muted);}
 .task-xp{font-size:10px;font-weight:700;color:var(--primary);}
 .ql-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
-.chart-wrap{height:88px;display:flex;align-items:flex-end;gap:5px;width:100%;}
+.chart-wrap{height:100px;display:flex;align-items:flex-end;gap:5px;width:100%;overflow:visible;padding-bottom:2px;}
 .bc{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;}
 .bw{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;}
 .b{width:74%;border-radius:5px 5px 3px 3px;transition:height .6s cubic-bezier(.34,1.2,.64,1);}
@@ -877,7 +919,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 .lb-pts-val{font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;color:var(--primary);}
 .lb-pts-lbl{font-size:9px;color:var(--muted);}
 .streak-pill{display:inline-flex;align-items:center;gap:3px;background:var(--ol);color:var(--orange);border-radius:99px;padding:2px 7px;font-size:9px;font-weight:700;margin-top:3px;}
-.habit-loop{display:flex;align-items:center;justify-content:center;gap:6px;margin:14px 0;}
+.habit-loop{display:flex;align-items:center;justify-content:center;gap:6px;margin:14px 0 24px;}
 .hl-step{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;}
 .hl-circle{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;border:3px solid var(--border);}
 .hl-circle.done{border-color:var(--green);background:var(--gl);}
@@ -1068,6 +1110,8 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 .sl-lbl{flex:1;font-size:13px;font-weight:600;}
 .sl-arrow{font-size:12px;color:var(--muted);}
 </style>
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -1159,7 +1203,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       <div class="app-logo">Bulk<em>Up</em></div>
       <div style="display:flex;gap:7px;">
         <div class="icon-btn" onclick="showToast('🔒 Secured by Netlify + Firebase!')">🔒</div>
-        <div class="icon-btn" onclick="doLogout()">🚪</div>
+        <div class="icon-btn" onclick="doLogout()" style="background:#fff0f0;border-color:#fca5a5;color:#ef4444;font-size:18px;" title="Logout">🚪</div>
       </div>
     </div>
     <div class="scroll pad">
@@ -1332,7 +1376,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
         <div class="sl-item" onclick="showToast('🔔 Reminders coming soon!')"><div class="sl-icon" style="background:var(--surface);">🔔</div><div class="sl-lbl">Daily Reminders</div><div class="sl-arrow">›</div></div>
         <div class="sl-item" onclick="doLogout()"><div class="sl-icon" style="background:var(--rl);">🚪</div><div class="sl-lbl" style="color:var(--red);">Sign Out</div><div class="sl-arrow">›</div></div>
       </div>
-      <div style="height:12px;"></div>
+      <div style="height:80px;"></div>
     </div>
       </div>
 
@@ -1347,5 +1391,6 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
   </div>
 </div><!-- /page-app -->
 </div><!-- /app -->
+</body>
 </body>
 </html>
