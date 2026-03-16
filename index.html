@@ -65,7 +65,7 @@ const db = firebase.firestore();
    All mutable state lives here. Reset on logout via defUser()/defGS().
 ═══════════════════════════════════════════════════ */
 let currentUID=null, lbUnsub=null, _appReady=false;
-const defGS=()=>({xp:0,level:1,streak:0,calLogged:0,proLogged:0,weeklyWo:[0,0,0,0,0,0,0],totalWo:0,lastWorkoutDate:'',weeklyPts:0,allTimePts:0,habitStreak:0,lastHabitDay:'',challengeProgress:{},lastCalDay:'',lastWeightDay:'',wosToday:0,mealLogsToday:0,lastMealLogDate:'',lastChallengeWeek:''});
+const defGS=()=>({xp:0,level:1,streak:0,calLogged:0,proLogged:0,weeklyWo:[0,0,0,0,0,0,0],totalWo:0,lastWorkoutDate:'',weeklyPts:0,allTimePts:0,habitStreak:0,lastHabitDay:'',challengeProgress:{},lastCalDay:'',lastWeightDay:'',wosToday:0,mealLogsToday:0,lastMealLogDate:'',lastChallengeWeek:'',weeklyWoCount:0,lastStreakWeek:'',restDayLoggedWeek:''});
 const defUser=()=>({name:'Champ',weight:'60',height:'175',age:'18',level:'Never worked out',calories:2500,protein:150,avatar:'💪'});
 let user=defUser(),gs=defGS();
 let tasksDone=new Set(),recentWorkouts=[],weightLog=[],bodyStats={chest:'',arm:''};
@@ -329,7 +329,7 @@ function updateXP(){
   g('d-wt-disp').textContent=weightLog.length?weightLog[weightLog.length-1].w:'—';
   const rk=myRank();g('d-rank').textContent=rk>0?'#'+rk:'—';
   g('prof-name').textContent=user.name;g('prof-lv').textContent=`Level ${li.level} · ${li.title}`;
-  g('prof-str').textContent=`🔥 ${gs.streak} day streak`;g('prof-xp').textContent=gs.xp;
+  g('prof-str').textContent=`🔥 ${gs.streak} week streak`;g('prof-xp').textContent=gs.xp;
   g('prof-wo').textContent=gs.totalWo;g('prof-rank-val').textContent=rk>0?'#'+rk:'—';
   g('prof-rank-pill').textContent=`🏆 #${rk>0?rk:'—'}`;saveFS();
 }
@@ -339,6 +339,17 @@ window.addXP=function(n,lbl){
   if(nw.level>old.level)setTimeout(()=>showToast(`🎉 Level Up! Level ${nw.level} — ${nw.title}!`),1500);
 };
 function myRank(){if(!window._lbData||!currentUID)return 0;const s=[...window._lbData].sort((a,b)=>b.weeklyPts-a.weeklyPts);const i=s.findIndex(p=>p.uid===currentUID);return i>=0?i+1:0;}
+// Weekly streak helpers
+function getWeekKey(date){const d=new Date(date);d.setHours(0,0,0,0);d.setDate(d.getDate()+(4-((d.getDay()||7))));const yr=d.getFullYear();const wn=Math.ceil((((d-new Date(yr,0,1))/86400000)+1)/7);return yr+'-W'+(wn<10?'0':'')+wn;}
+function getCurrentWeekKey(){return getWeekKey(new Date());}
+function updateWeeklyStreak(){
+  const thisWeek=getCurrentWeekKey();
+  const d=new Date();d.setDate(d.getDate()-7);const prevWeek=getWeekKey(d);
+  if(gs.lastStreakWeek===thisWeek)return; // already processed this week
+  if(gs.lastStreakWeek&&gs.lastStreakWeek!==prevWeek){gs.streak=0;} // missed a week — reset
+  gs.lastStreakWeek=thisWeek;gs._weekStreakAwarded=false;
+  gs.weeklyWo=[0,0,0,0,0,0,0];gs.weeklyWoCount=0;
+}
 
 
 
@@ -350,6 +361,7 @@ function initApp(){
   const hr=new Date().getHours();
   g('d-name').textContent=`Hey, ${user.name}! 👋`;
   g('d-sub').textContent=hr<12?'Good morning! Eat that breakfast 🌅':hr<17?'Keep hitting those calories 💪':'Evening grind. Don\'t skip dinner 🌙';
+  updateWeeklyStreak(); // check if new week started, reset if needed
   updateXP();updateRings();drawChart();buildTasks();renderWoPlans('home');renderRecent();buildAchievements();subscribeLB();
   // Restore meal button state
   const _used=gs.mealPlansUsed||0,_lim=3,_rem=_lim-_used;
@@ -373,7 +385,8 @@ function updateRings(){
 function drawChart(){
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],data=gs.weeklyWo,max=Math.max(...data,1),ti=(new Date().getDay()+6)%7;
   let tot=0;data.forEach(v=>{if(v>0)tot++;});
-  g('d-week-pill').textContent=tot+' workout'+(tot===1?'':'s');
+  const weekGoal=3;
+  g('d-week-pill').textContent=tot+'/'+weekGoal+' workouts'+(tot>=weekGoal?' 🔥':'');
   const el=g('home-chart');
   el.innerHTML=data.map((v,i)=>{const isT=i===ti,c=isT?'var(--primary)':v>0?'#a5b4fc':'var(--border)';const h=Math.max(Math.round((v/max)*80),4);return`<div class="bc"><div class="bw"><div class="b" style="height:${h}px;background:${c};border-radius:4px 4px 0 0;width:100%;transition:height .3s;"></div></div><div class="bd">${days[i]}</div></div>`;}).join('');
 }
@@ -383,10 +396,15 @@ const TASKS=[
   {id:'t2',nm:'Hit calorie goal',icon:'🔥',sub:'Log meals to reach target',xp:60,pts:50},
   {id:'t3',nm:'Complete a workout',icon:'💪',sub:'Any workout counts',xp:80,pts:70},
   {id:'t4',nm:'Log your weight',icon:'⚖️',sub:'Consistency builds the trend',xp:30,pts:20},
+  {id:'t5',nm:'Rest day check-in',icon:'😴',sub:'Recovery = growth. Rest counts!',xp:20,pts:15},
 ];
 function buildTasks(){
-  g('tasks-list').innerHTML=TASKS.map(t=>{const d=tasksDone.has(t.id);return`<div class="task-item"><div class="task-check${d?' done':''}" onclick="toggleTask('${t.id}',this)">${d?'✓':''}</div><div class="task-info"><div class="task-name${d?' done':''}">${t.icon} ${t.nm}</div><div class="task-sub">${t.sub}</div></div><div class="task-xp">+${t.xp}XP</div></div>`;}).join('');
-  g('d-tasks-lbl').textContent=`${tasksDone.size}/4`;checkHabit();
+  // t3 (workout) and t5 (rest day) are alternatives — show rest day only if no workout today
+  const woToday=tasksDone.has('t3');
+  const visibleTasks=TASKS.filter(t=>t.id!=='t5'||(t.id==='t5'&&!woToday));
+  g('tasks-list').innerHTML=visibleTasks.map(t=>{const d=tasksDone.has(t.id);return`<div class="task-item"><div class="task-check${d?' done':''}" onclick="toggleTask('${t.id}',this)">${d?'✓':''}</div><div class="task-info"><div class="task-name${d?' done':''}">${t.icon} ${t.nm}</div><div class="task-sub">${t.sub}</div></div><div class="task-xp">+${t.xp}XP</div></div>`;}).join('');
+  const coreDone=['t1','t2','t3','t4'].filter(id=>tasksDone.has(id)).length;
+  g('d-tasks-lbl').textContent=`${coreDone}/4`;checkHabit();
 }
 window.toggleTask=function(id,el){
   const t=TASKS.find(x=>x.id===id);
@@ -463,11 +481,12 @@ function lbEntry(p,rank,type,isMe){
   return`<div class="lb-entry${isMe?' me':''}${rank===1?' top1':rank===2?' top2':rank===3?' top3':''}"><div style="width:28px;text-align:center;flex-shrink:0;">${medal?`<span style="font-size:20px;">${medal}</span>`:`<span style="font-family:Nunito,sans-serif;font-size:14px;font-weight:900;color:var(--muted);">${rank}</span>`}</div><div class="lb-avatar">${p.avatar}</div><div class="lb-info"><div class="lb-uname">${p.name}${isMe?'<span class="you-tag">You</span>':''}</div><div class="lb-stats">${sub}</div>${p.streak>=3?`<div class="streak-pill">🔥 ${p.streak} days</div>`:''}</div><div style="text-align:right;flex-shrink:0;"><div class="lb-pts-val">${pts}</div><div class="lb-pts-lbl">${ptsLbl}</div></div></div>`;
 }
 function buildHabitViz(){
-  const S=[{i:'🌅',l:'Wake Up',d:tasksDone.has('t1')},{i:'💪',l:'Workout',d:tasksDone.has('t3')},{i:'🥩',l:'Eat Right',d:tasksDone.has('t2')},{i:'⚖️',l:'Log',d:tasksDone.has('t4')}];
+  const woToday=tasksDone.has('t3');
+  const S=[{i:'🌅',l:'Wake Up',d:tasksDone.has('t1')},{i:woToday?'💪':'😴',l:woToday?'Workout':'Rest Day',d:tasksDone.has('t3')||tasksDone.has('t5')},{i:'🥩',l:'Eat Right',d:tasksDone.has('t2')},{i:'⚖️',l:'Log',d:tasksDone.has('t4')}];
   if(g('habit-loop-viz'))g('habit-loop-viz').innerHTML=S.map((s,i)=>`<div class="hl-step"><div class="hl-circle${s.d?' done':''}">${s.i}</div><div class="hl-lbl">${s.l}</div></div>${i<S.length-1?`<div class="hl-arrow">→</div>`:''}`).join('');
 }
 const CHALLENGES=[
-  {id:'c1',nm:'7-Day Streak',icon:'🔥',color:'var(--orange)',bg:'var(--ol)',desc:'Work out 7 days in a row',target:7,key:'streak',pts:500},
+  {id:'c1',nm:'3-Week Streak',icon:'🔥',color:'var(--orange)',bg:'var(--ol)',desc:'Hit 3 workouts/week for 3 weeks',target:3,key:'streak',pts:500},
   {id:'c2',nm:'10 Workouts',icon:'💪',color:'var(--primary)',bg:'var(--pl)',desc:'Complete 10 total workouts',target:10,key:'totalWo',pts:300},
   {id:'c3',nm:'Protein Pro',icon:'🥩',color:'var(--green)',bg:'var(--gl)',desc:'Hit protein goal 5 days',target:5,key:'proteinDays',pts:250},
   {id:'c4',nm:'500 XP',icon:'⚡',color:'var(--yellow)',bg:'var(--yl)',desc:'Earn 500 XP total',target:500,key:'xp',pts:400},
@@ -542,8 +561,13 @@ function completeWorkout(){
   gs.lastWoXpDay=today;
   gs.totalWo++;gs.weeklyPts+=pts;gs.allTimePts+=pts;gs.challengeProgress.totalWo=gs.totalWo;
   gs.calLogged=Math.min(gs.calLogged+Math.round(cal*0.25),Math.round(user.calories*1.5));
-  const ti=(new Date().getDay()+6)%7;gs.weeklyWo[ti]+=1;
-  if(gs.lastWorkoutDate!==today){gs.streak++;gs.lastWorkoutDate=today;}
+  const ti=(new Date().getDay()+6)%7;gs.weeklyWo[ti]+=1;gs.lastWorkoutDate=today;
+  gs.weeklyWoCount=(gs.weeklyWoCount||0)+1;
+  // Weekly streak: award +1 streak when hitting 3 workouts in a week (once per week)
+  if(gs.weeklyWoCount===3&&!gs._weekStreakAwarded){
+    gs.streak++;gs._weekStreakAwarded=true;
+    setTimeout(()=>showToast('🔥 3 workouts this week — streak grows!'),800);
+  }
   gs.challengeProgress.streak=gs.streak;
   aw.exs.forEach(e=>{const ms=e.ms.toLowerCase();if(ms.includes('chest'))muscleFocus.chest=Math.min((muscleFocus.chest||0)+14,100);if(ms.includes('back')||ms.includes('lat'))muscleFocus.back=Math.min((muscleFocus.back||0)+14,100);if(ms.includes('leg')||ms.includes('quad')||ms.includes('glute'))muscleFocus.legs=Math.min((muscleFocus.legs||0)+14,100);if(ms.includes('core'))muscleFocus.core=Math.min((muscleFocus.core||0)+14,100);if(ms.includes('shoulder'))muscleFocus.shoulders=Math.min((muscleFocus.shoulders||0)+14,100);if(ms.includes('arm')||ms.includes('bicep')||ms.includes('tricep'))muscleFocus.arms=Math.min((muscleFocus.arms||0)+14,100);if(ms.includes('full body'))Object.keys(muscleFocus).forEach(k=>muscleFocus[k]=Math.min((muscleFocus[k]||0)+8,100));});
   if(!tasksDone.has('t3'))tasksDone.add('t3');
@@ -730,7 +754,7 @@ function buildMilestones(){
   const rk=myRank();
   const ms=[
     {t:'First Workout',s:'Start your transformation',done:gs.totalWo>=1},
-    {t:'3-Day Streak',s:'Work out 3 days in a row',done:gs.streak>=3},
+    {t:'1-Week Streak',s:'Hit 3 workouts in a week',done:gs.streak>=1},
     {t:'Log First Weight',s:'Know your starting point',done:weightLog.length>=1},
     {t:'Top 5 Leaderboard',s:'Real players, real competition!',done:rk>0&&rk<=5},
     {t:'10 Workouts Club',s:'Building a real habit',done:gs.totalWo>=10},
@@ -746,7 +770,7 @@ function buildMilestones(){
    SECTION 17 — ACHIEVEMENTS
 ═══════════════════════════════════════════════════ */
 const ACHIEVE=[
-  {i:'🔥',n:'3-Day Streak',u:()=>gs.streak>=3,bg:'#fff7ed'},
+  {i:'🔥',n:'1-Week Streak',u:()=>gs.streak>=1,bg:'#fff7ed'},
   {i:'💪',n:'First Workout',u:()=>gs.totalWo>=1,bg:'#eef2ff'},
   {i:'⚡',n:'500 XP',u:()=>gs.xp>=500,bg:'#faf5ff'},
   {i:'🏆',n:'Top 5',u:()=>{const r=myRank();return r>0&&r<=5;},bg:'#fefce8'},
