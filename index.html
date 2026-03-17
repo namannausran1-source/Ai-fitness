@@ -66,7 +66,7 @@ const db = firebase.firestore();
 ═══════════════════════════════════════════════════ */
 let currentUID=null, lbUnsub=null, _appReady=false;
 const defGS=()=>({xp:0,level:1,streak:0,calLogged:0,proLogged:0,weeklyWo:[0,0,0,0,0,0,0],totalWo:0,lastWorkoutDate:'',weeklyPts:0,allTimePts:0,habitStreak:0,lastHabitDay:'',challengeProgress:{},lastCalDay:'',lastWeightDay:'',wosToday:0,mealLogsToday:0,lastMealLogDate:'',lastChallengeWeek:'',weeklyWoCount:0,lastStreakWeek:'',restDayLoggedWeek:''});
-const defUser=()=>({name:'Champ',weight:'60',height:'175',age:'18',level:'Never worked out',calories:2500,protein:150,avatar:'💪',diet:'veg',region:'India',budget:'low',targetWeight:'75'});
+const defUser=()=>({name:'Champ',weight:'60',height:'175',age:'18',level:'Never worked out',calories:2500,protein:150,avatar:'💪',diet:'veg',region:'India',budget:'low',targetWeight:'75',restDaysPerWeek:4});
 let user=defUser(),gs=defGS();
 let tasksDone=new Set(),recentWorkouts=[],weightLog=[],bodyStats={chest:'',arm:''};
 let photos=['','',''],muscleFocus={chest:0,back:0,legs:0,core:0,shoulders:0,arms:0};
@@ -314,7 +314,13 @@ window.obNext=async function(step){
 };
 window.pickOb=function(el,g2){document.querySelectorAll(`#ob-${g2}-grid .ob-opt`).forEach(e=>e.classList.remove('sel'));el.classList.add('sel');if(g2==='lvl')obLevel=el.dataset.v;};
 window.enterApp=async function(){const po=g('page-ob');if(po){po.classList.remove('active');po.style.display='none';}const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}_appReady=true;setTimeout(()=>{try{initApp();switchTab('home');}catch(e){console.error(e);}},320);saveFS().catch(console.error);};
-function calcTargets(){const w=parseFloat(user.weight)||60;user.calories=Math.round(w*40+300);user.protein=Math.round(w*2.2);}
+function calcTargets(){
+  const w=parseFloat(user.weight)||60,h=parseFloat(user.height)||175,a=parseFloat(user.age)||20;
+  const bmr=Math.round(88.36+(13.4*w)+(4.8*h)-(5.7*a));
+  const tdee=Math.round(bmr*1.55);
+  user.calories=tdee+500;
+  user.protein=Math.round(w*2.2);
+}
 
 
 
@@ -338,7 +344,8 @@ function updateXP(){
   g('d-wt-disp').textContent=weightLog.length?weightLog[weightLog.length-1].w:'—';
   const rk=myRank();g('d-rank').textContent=rk>0?'#'+rk:'—';
   g('prof-name').textContent=user.name;g('prof-lv').textContent=`Level ${li.level} · ${li.title}`;
-  g('prof-str').textContent=`🔥 ${gs.streak} week streak`;g('prof-xp').textContent=gs.xp;
+  g('prof-str').textContent=`🔥 ${gs.streak} week streak`;
+  const rdv=g('rest-days-val');if(rdv)rdv.textContent=user.restDaysPerWeek||4;g('prof-xp').textContent=gs.xp;
   g('prof-wo').textContent=gs.totalWo;g('prof-rank-val').textContent=rk>0?'#'+rk:'—';
   g('prof-rank-pill').textContent=`🏆 #${rk>0?rk:'—'}`;saveFS();
 }
@@ -370,12 +377,51 @@ function initApp(){
   const hr=new Date().getHours();
   g('d-name').textContent=`Hey, ${user.name}! 👋`;
   g('d-sub').textContent=hr<12?'Good morning! Eat that breakfast 🌅':hr<17?'Keep hitting those calories 💪':'Evening grind. Don\'t skip dinner 🌙';
-  updateWeeklyStreak(); // check if new week started, reset if needed
-  updateXP();updateRings();drawChart();buildTasks();renderWoPlans('home');renderRecent();buildAchievements();subscribeLB();
-  // Restore meal button state
+  updateWeeklyStreak();
+  updateXP();updateRings();drawChart();buildTasks();buildMission();renderWoPlans('home');renderRecent();buildAchievements();subscribeLB();
   const _used=gs.mealPlansUsed||0,_lim=3,_rem=_lim-_used;
   const _mb=g('m-btn');if(_mb){if(_rem<=0){_mb.disabled=true;_mb.textContent='🔒 Limit Reached ('+_used+'/'+_lim+')';}else if(_used>0)_mb.textContent='🍽️ Build My Meal Plan ('+_rem+' left)';}
 }
+
+function buildMission(){
+  const mc=g('mission-card');if(!mc)return;
+  const steps=[
+    {id:'t3',icon:'💪',label:'Workout'},
+    {id:'t2',icon:'🔥',label:'Calories'},
+    {id:'t4',icon:'⚖️',label:'Weight'},
+  ];
+  const done=steps.filter(s=>tasksDone.has(s.id)).length;
+  const pct=Math.round(done/steps.length*100);
+  const allDone=done===steps.length;
+  const titles=[
+    [`Crush Today, ${user.name}! 🔥`,'Complete all 3 missions to earn +100 bonus XP'],
+    ['1 down, keep going! 💪','You\'re on your way — don\'t stop now'],
+    ['Almost there! ⚡','One more mission and you\'re done'],
+    ['Mission Complete! 🏆','You crushed it today — full bonus earned!'],
+  ];
+  const [title,sub]=titles[Math.min(done,3)];
+  g('mission-title').textContent=title;
+  g('mission-sub').textContent=sub;
+  g('mission-bar').style.width=pct+'%';
+  g('mission-pct').textContent=pct+'%';
+  g('mission-steps').innerHTML=steps.map(s=>{
+    const isDone=tasksDone.has(s.id);
+    return `<div onclick="missionTap('${s.id}')" style="background:${isDone?'rgba(255,255,255,.25)':'rgba(255,255,255,.12)'};border:1.5px solid ${isDone?'rgba(255,255,255,.5)':'rgba(255,255,255,.2)'};border-radius:13px;padding:10px 6px;text-align:center;cursor:pointer;">
+      <div style="font-size:20px;margin-bottom:3px;">${isDone?'✅':s.icon}</div>
+      <div style="font-size:9px;font-weight:700;opacity:${isDone?.6:1};">${s.label}</div>
+    </div>`;
+  }).join('');
+  if(allDone){
+    const today=new Date().toLocaleDateString('en-GB');
+    if(gs.lastMissionBonus!==today){gs.lastMissionBonus=today;setTimeout(()=>{showToast('🏆 Mission Complete! +100 Bonus XP!');addXP(100,'Mission complete');},300);}
+  }
+}
+window.missionTap=function(id){
+  if(tasksDone.has(id)){showToast('✅ Already done!');return;}
+  if(id==='t3')switchTab('workout');
+  else if(id==='t2'){switchTab('home');setTimeout(()=>g('ql-cal')?.focus(),200);}
+  else if(id==='t4')switchTab('progress');
+};
 
 
 
@@ -419,17 +465,24 @@ window.toggleTask=function(id,el){
   const t=TASKS.find(x=>x.id===id);
   const today=new Date().toLocaleDateString('en-GB');
   if(tasksDone.has(id)){
-    // Allow untoggle UI but NO XP refund (anti-hack)
     tasksDone.delete(id);el.classList.remove('done');el.textContent='';
-    buildTasks();saveFS();return;
+    buildTasks();buildMission();saveFS();return;
   }
-  // Only award XP once per day per task
+  if(id==='t5'){
+    if(tasksDone.has('t3')){showToast('⚠️ You already worked out today!');return;}
+    if(!gs.restDays)gs.restDays={};
+    if(gs.restDays[today]){showToast('😴 Rest day already logged today!');return;}
+    gs.restDays[today]=true;
+    // Prune entries older than 30 days
+    const cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);
+    Object.keys(gs.restDays).forEach(d=>{try{const dt=new Date(d.split('/').reverse().join('-'));if(dt<cutoff)delete gs.restDays[d];}catch(e){}});
+  }
   if(!gs.habitXpDay)gs.habitXpDay={};
   const alreadyAwarded=gs.habitXpDay[id]===today;
   tasksDone.add(id);el.classList.add('done');el.textContent='✓';
   if(!alreadyAwarded){gs.habitXpDay[id]=today;addXP(t.xp,'Habit done');}
   else showToast('✅ '+t.nm+' done!');
-  buildTasks();saveFS();
+  buildTasks();buildMission();saveFS();
 };
 function checkHabit(){
   if(tasksDone.size===4){const today=new Date().toLocaleDateString('en-GB');if(gs.lastHabitDay!==today){gs.lastHabitDay=today;gs.habitStreak=(gs.habitStreak||0)+1;gs.challengeProgress.habitDays=(gs.challengeProgress.habitDays||0)+1;setTimeout(()=>{showToast('🔄 Full Habit Loop! +50 XP!');addXP(50,'Habit loop');},400);}}
@@ -606,6 +659,32 @@ function renderRecent(){
    AI via Netlify Function /api/claude (Gemini 2.0 Flash)
    Beta limit: 3 lifetime generations per user.
 ═══════════════════════════════════════════════════ */
+window.fpPick=function(el,type){document.querySelectorAll(`#fp-${type}-row .chip`).forEach(c=>c.classList.remove('sel'));el.classList.add('sel');};
+window.saveFoodProfile=function(){
+  const dietEl=document.querySelector('#fp-diet-row .chip.sel');
+  const budgetEl=document.querySelector('#fp-budget-row .chip.sel');
+  const region=(g('fp-region').value||'').trim();
+  const target=(g('fp-target').value||'').trim();
+  if(!dietEl){showToast('⚠️ Pick your diet type');return;}
+  if(!region){showToast('⚠️ Enter your city/state');return;}
+  if(!budgetEl){showToast('⚠️ Pick your budget');return;}
+  user.diet=dietEl.dataset.v;user.region=region;user.budget=budgetEl.dataset.v;
+  if(target&&+target>parseFloat(user.weight||0))user.targetWeight=target;
+  calcTargets();
+  g('food-profile-card').style.display='none';
+  showToast('✅ Saved! Your meal plans are now personalised 🍱');
+  saveFS();
+};
+function showFoodProfileIfNeeded(){
+  const card=g('food-profile-card');if(!card)return;
+  if(!user.region||user.region==='India'||!user.diet){
+    card.style.display='block';
+    if(user.diet){const el=document.querySelector(`#fp-diet-row [data-v="${user.diet}"]`);if(el)el.classList.add('sel');}
+    if(user.budget){const el=document.querySelector(`#fp-budget-row [data-v="${user.budget}"]`);if(el)el.classList.add('sel');}
+    if(user.region&&user.region!=='India'){g('fp-region').value=user.region;}
+    if(user.targetWeight)g('fp-target').value=user.targetWeight;
+  } else {card.style.display='none';}
+}
 window.genMeal=async function(){
   const ing=g('m-ing').value.trim(),err=g('m-err');
   err.classList.remove('show');
@@ -858,6 +937,7 @@ window.switchTab=function(t){
   if(t==='leaderboard')renderLeaderboard();
   if(t==='workout')renderRecent();
   if(t==='progress')buildProgress();
+  if(t==='meal')showFoodProfileIfNeeded();
   if(t==='profile'){
     buildAchievements();
     // Refresh rank now that LB data may have arrived
@@ -869,6 +949,19 @@ window.switchTab=function(t){
 
 renderObProg();
 
+window.showRestDaySetting=function(){
+  const cur=user.restDaysPerWeek||4;
+  const opts=[1,2,3,4,5,6];
+  const chosen=prompt(`Rest days per week? (current: ${cur})
+Enter a number from 1–6:`,''+cur);
+  if(chosen===null)return;
+  const v=parseInt(chosen);
+  if(isNaN(v)||v<1||v>6){showToast('⚠️ Enter a number between 1 and 6');return;}
+  user.restDaysPerWeek=v;
+  const el=g('rest-days-val');if(el)el.textContent=v;
+  showToast(`✅ Rest days set to ${v}/week`);
+  saveFS();
+};
 // ── Expose every function as true window global ──────────────────────────
 // Needed because onclick="" in HTML runs in global scope, not module scope.
 [['showAuthTab',window.showAuthTab],['doEmailLogin',window.doEmailLogin],
@@ -881,7 +974,7 @@ renderObProg();
  ['quickLog',window.quickLog],['nextExercise',window.nextExercise],
  ['skipRest',window.skipRest],['finishWorkout',window.finishWorkout],
  ['confirmStop',window.confirmStop],['addXP',window.addXP],
- ['genMeal',window.genMeal],['toggleChip',window.toggleChip],
+ ['genMeal',window.genMeal],['toggleChip',window.toggleChip],['fpPick',window.fpPick],['saveFoodProfile',window.saveFoodProfile],['missionTap',window.missionTap],
  ['logWeight',window.logWeight],['saveBS',window.saveBS],
  ['addPhoto',window.addPhoto],['showToast',window.showToast],
  ['switchLbTab',window.switchLbTab],['buildAchievements',window.buildAchievements],
@@ -1371,6 +1464,17 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
         <div class="section-head"><div class="section-title">⚡ Today's Habits</div><div class="pill pill-primary" id="d-tasks-lbl">0/4</div></div>
         <div id="tasks-list"></div>
       </div>
+      <div id="mission-card" style="background:linear-gradient(135deg,#1e1b4b 0%,var(--primary) 60%,#6366f1 100%);border-radius:22px;padding:18px;margin-bottom:12px;color:#fff;position:relative;overflow:hidden;">
+        <div style="position:absolute;right:-20px;top:-20px;width:100px;height:100px;background:rgba(255,255,255,.06);border-radius:50%;"></div>
+        <div style="font-size:10px;font-weight:800;letter-spacing:.12em;opacity:.7;text-transform:uppercase;margin-bottom:6px;">⚡ Today's Mission</div>
+        <div style="font-family:'Nunito',sans-serif;font-size:18px;font-weight:900;margin-bottom:3px;" id="mission-title">Loading…</div>
+        <div style="font-size:11px;opacity:.75;margin-bottom:14px;" id="mission-sub">Tap to get started</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+          <div style="flex:1;background:rgba(255,255,255,.18);border-radius:99px;height:7px;overflow:hidden;"><div id="mission-bar" style="height:100%;border-radius:99px;background:#fff;transition:width .6s ease;width:0%;"></div></div>
+          <div style="font-size:11px;font-weight:700;opacity:.85;" id="mission-pct">0%</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;" id="mission-steps"></div>
+      </div>
       <div class="card">
         <div class="card-title">📝 Quick Log</div>
         <div class="ql-row"><input class="si" type="number" id="ql-cal" placeholder="Calories eaten"/><input class="si" type="number" id="ql-pro" placeholder="Protein (g)"/></div>
@@ -1443,6 +1547,15 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
   <div id="sc-meal" style="display:none;flex-direction:column;flex:1;min-height:0;">
     <div style="padding:16px 18px 7px;flex-shrink:0;"><div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;">Meal Planner 🍳</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">AI-powered · API secured by Netlify 🔒</div></div>
     <div class="scroll pad">
+      <div id="food-profile-card" style="display:none;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid var(--green);border-radius:18px;padding:15px;margin-bottom:12px;">
+        <div style="font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;color:var(--gd);margin-bottom:4px;">🍱 Personalise Your Meal Plans</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Set your diet, region & budget so your AI meal plans are made for you.</div>
+        <div style="margin-bottom:8px;"><div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;">Diet Type</div><div style="display:flex;gap:6px;flex-wrap:wrap;" id="fp-diet-row"><div class="chip" data-v="veg" onclick="fpPick(this,'diet')">🥦 Veg</div><div class="chip" data-v="eggetarian" onclick="fpPick(this,'diet')">🥚 Eggetarian</div><div class="chip" data-v="non-veg" onclick="fpPick(this,'diet')">🍗 Non-Veg</div></div></div>
+        <div style="margin-bottom:8px;"><div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;">City / State</div><input class="si" id="fp-region" type="text" placeholder="e.g. Delhi, Mumbai, Punjab…"/></div>
+        <div style="margin-bottom:8px;"><div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;">Target Weight (kg)</div><input class="si" id="fp-target" type="number" placeholder="e.g. 75"/></div>
+        <div style="margin-bottom:10px;"><div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;">Monthly Food Budget</div><div style="display:flex;gap:6px;flex-wrap:wrap;" id="fp-budget-row"><div class="chip" data-v="low" onclick="fpPick(this,'budget')">💸 Under ₹3k</div><div class="chip" data-v="mid" onclick="fpPick(this,'budget')">💰 ₹3k–6k</div><div class="chip" data-v="high" onclick="fpPick(this,'budget')">🤑 ₹6k+</div></div></div>
+        <button class="btn btn-green" style="padding:11px;" onclick="saveFoodProfile()">💾 Save & Personalise</button>
+      </div>
       <div class="card">
         <div class="card-title">🥡 Your Ingredients</div>
         <textarea class="kta" id="m-ing" placeholder="e.g. rice, eggs, milk, peanut butter, banana..."></textarea>
