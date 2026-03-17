@@ -66,7 +66,7 @@ const db = firebase.firestore();
 ═══════════════════════════════════════════════════ */
 let currentUID=null, lbUnsub=null, _appReady=false;
 const defGS=()=>({xp:0,level:1,streak:0,calLogged:0,proLogged:0,weeklyWo:[0,0,0,0,0,0,0],totalWo:0,lastWorkoutDate:'',weeklyPts:0,allTimePts:0,habitStreak:0,lastHabitDay:'',challengeProgress:{},lastCalDay:'',lastWeightDay:'',wosToday:0,mealLogsToday:0,lastMealLogDate:'',lastChallengeWeek:'',weeklyWoCount:0,lastStreakWeek:'',restDayLoggedWeek:''});
-const defUser=()=>({name:'Champ',weight:'60',height:'175',age:'18',level:'Never worked out',calories:2500,protein:150,avatar:'💪'});
+const defUser=()=>({name:'Champ',weight:'60',height:'175',age:'18',level:'Never worked out',calories:2500,protein:150,avatar:'💪',diet:'veg',region:'India',budget:'low',targetWeight:'75'});
 let user=defUser(),gs=defGS();
 let tasksDone=new Set(),recentWorkouts=[],weightLog=[],bodyStats={chest:'',arm:''};
 let photos=['','',''],muscleFocus={chest:0,back:0,legs:0,core:0,shoulders:0,arms:0};
@@ -293,14 +293,23 @@ window.showToast=function(msg){const t=g('toast');t.textContent=msg;t.classList.
    SECTION 9 — ONBOARDING
 ═══════════════════════════════════════════════════ */
 window.renderObProg=function(){
-  g('ob-prog').innerHTML=Array.from({length:4},(_,i)=>{const n=i+1;return`<div class="ob-dot-p${n<obStep?' d':n===obStep?' a':''}"></div>`;}).join('');
+  g('ob-prog').innerHTML=Array.from({length:5},(_,i)=>{const n=i+1;return`<div class="ob-dot-p${n<obStep?' d':n===obStep?' a':''}"></div>`;}).join('');
 };
 window.obNext=async function(step){
   const e=g('ob-e'+step);if(e)e.textContent='';
-  if(step===2){const w=g('ob-wt').value,h=g('ob-ht').value,a=g('ob-age').value;if(!w||!h||!a||+w<20||+h<100||+a<10){e.textContent='Please fill valid stats!';return;}user.weight=w;user.height=h;user.age=a;calcTargets();}
-  if(step===3){if(!obLevel){e.textContent='Pick one!';return;}user.level=obLevel;}
+  if(step===2){const w=g('ob-wt').value,h=g('ob-ht').value,a=g('ob-age').value,tw=g('ob-tw').value;if(!w||!h||!a||+w<20||+h<100||+a<10){e.textContent='Please fill valid stats!';return;}if(!tw||+tw<=+w){e.textContent='Target weight must be greater than current!';return;}user.weight=w;user.height=h;user.age=a;user.targetWeight=tw;calcTargets();}
+  if(step===3){
+    const dietEl=document.querySelector('#ob-diet-grid .ob-opt.sel');
+    const budgetEl=document.querySelector('#ob-budget-grid .ob-opt.sel');
+    const regionVal=g('ob-region').value.trim();
+    if(!dietEl){e.textContent='Pick your diet type!';return;}
+    if(!regionVal){e.textContent='Enter your city or state!';return;}
+    if(!budgetEl){e.textContent='Pick your monthly food budget!';return;}
+    user.diet=dietEl.dataset.v;user.region=regionVal;user.budget=budgetEl.dataset.v;
+  }
+  if(step===4){if(!obLevel){e.textContent='Pick one!';return;}user.level=obLevel;}
   g('obs'+step).classList.remove('show');obStep=step+1;
-  if(obStep===4){g('ob-fn').textContent=user.name;g('ob-fp').textContent=`Daily target: ${user.calories} kcal · ${user.protein}g protein 💪`;}
+  if(obStep===5){g('ob-fn').textContent=user.name;g('ob-fp').textContent=`Daily target: ${user.calories} kcal · ${user.protein}g protein 💪`;}
   g('obs'+obStep).classList.add('show');renderObProg();
 };
 window.pickOb=function(el,g2){document.querySelectorAll(`#ob-${g2}-grid .ob-opt`).forEach(e=>e.classList.remove('sel'));el.classList.add('sel');if(g2==='lvl')obLevel=el.dataset.v;};
@@ -612,7 +621,59 @@ window.genMeal=async function(){
     return;
   }
   g('m-btn').disabled=true;g('m-load').classList.add('vis');g('m-result').classList.remove('vis');g('m-regen').style.display='none';
-  const prompt=`You are a bulking nutrition coach. Create a full day meal plan for ${user.name} who weighs ${user.weight}kg, is ${user.age} years old, and needs ${user.calories} kcal and ${user.protein}g protein daily. Use these ingredients: ${ing}.\n\nUse EXACTLY this format (no emojis in section headers):\n\nBREAKFAST\n[meal description]\n~[number] kcal\n\nMID-MORNING SNACK\n[meal description]\n~[number] kcal\n\nLUNCH\n[meal description]\n~[number] kcal\n\nEVENING SNACK\n[meal description]\n~[number] kcal\n\nDINNER\n[meal description]\n~[number] kcal\n\nBEFORE BED\n[meal description]\n~[number] kcal\n\nMACROS SUMMARY\nProtein: ~[number]g\nCarbs: ~[number]g\nFats: ~[number]g\n\nCOACH NOTE\n[2 motivating sentences for someone trying to bulk up]`;
+  const dietLabel={'veg':'strict vegetarian (no eggs, no meat)','eggetarian':'eggetarian (eggs allowed, no meat)','non-veg':'non-vegetarian'}[user.diet||'veg']||'vegetarian';
+  const budgetLabel={'low':'very budget-friendly under ₹3,000/month — use cheap staples like dal, rice, oats, banana, peanut butter, soybean','mid':'moderate ₹3,000–6,000/month — can include paneer, chicken (if non-veg), whey protein, dry fruits','high':'flexible ₹6,000+/month — include premium proteins, Greek yogurt, nuts, cottage cheese'}[user.budget||'low']||'budget-friendly';
+  const prompt=`You are a bulking nutrition coach for Indian hardgainers. Create a full day meal plan with EXACT Indian foods.
+
+USER PROFILE:
+- Name: ${user.name}
+- Current weight: ${user.weight}kg → Target: ${user.targetWeight||'not set'}kg
+- Age: ${user.age} | Daily targets: ${user.calories} kcal, ${user.protein}g protein
+- Diet: ${dietLabel}
+- Region: ${user.region||'India'} — use foods common in this region
+- Budget: ${budgetLabel}
+- Available today: ${ing}
+
+STRICT RULES:
+1. Use Indian meals only (dal, sabzi, roti, rice, curd, poha, upma, idli, etc). Match region where possible.
+2. Give EXACT quantities (e.g. "2 rotis (60g each)", "150g paneer", "1 cup cooked rice ~180g").
+3. NEVER suggest foods outside the ${dietLabel} diet. This is non-negotiable.
+4. Keep within the budget constraint.
+5. Protein goal of ${user.protein}g is top priority — mention the protein source clearly in each meal.
+
+Use EXACTLY this format (no emojis in section headers):
+
+BREAKFAST
+[meal with exact quantities and protein source]
+~[number] kcal
+
+MID-MORNING SNACK
+[meal with exact quantities]
+~[number] kcal
+
+LUNCH
+[meal with exact quantities and protein source]
+~[number] kcal
+
+EVENING SNACK
+[meal with exact quantities]
+~[number] kcal
+
+DINNER
+[meal with exact quantities and protein source]
+~[number] kcal
+
+BEFORE BED
+[meal with exact quantities]
+~[number] kcal
+
+MACROS SUMMARY
+Protein: ~[number]g
+Carbs: ~[number]g
+Fats: ~[number]g
+
+COACH NOTE
+[2 motivating sentences for a hardgainer going from ${user.weight}kg to ${user.targetWeight||'their target weight'}]`;
   try{
     const token=await auth.currentUser?.getIdToken();
     const res=await fetch('/api/claude',{
@@ -632,6 +693,7 @@ window.genMeal=async function(){
 function renderMeal(text){
   g('m-load').classList.remove('vis');g('m-btn').disabled=false;
   g('m-rname').textContent=user.name;g('m-rcal').textContent=user.calories;
+  const rsub=g('m-rsub');if(rsub){const de={'veg':'🥦 Veg','eggetarian':'🥚 Eggetarian','non-veg':'🍗 Non-Veg'}[user.diet||'veg'];rsub.textContent=`${de} · ${user.region||'India'} · ${user.weight}→${user.targetWeight||'?'}kg`;}
   // Parse macros
   const pm=text.match(/Protein:\s*~?(\d+)g/i),cm=text.match(/Carbs:\s*~?(\d+)g/i),fm=text.match(/Fats:\s*~?(\d+)g/i);
   if(pm)g('m-mp').textContent='~'+pm[1]+'g';if(cm)g('m-mc').textContent='~'+cm[1]+'g';if(fm)g('m-mf').textContent='~'+fm[1]+'g';
@@ -1264,9 +1326,14 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
   <div class="ob-body">
     <div class="ob-prog" id="ob-prog"></div>
     <div class="ob-step" id="obs1"><div class="ob-emoji">💪</div><div class="ob-h">Welcome to <em>BulkUp</em>!</div><div class="ob-p">Your skinny-to-strong companion. Real competition, real results.</div><button class="ob-btn" onclick="obNext(1)">Let's Go →</button></div>
-    <div class="ob-step" id="obs2"><div class="ob-emoji">⚖️</div><div class="ob-h">Your <em>body stats</em></div><div class="ob-p">Used to calculate calorie & protein targets.</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:9px;"><input class="fi" id="ob-wt" type="number" placeholder="Weight (kg)" style="margin-bottom:0;"/><input class="fi" id="ob-ht" type="number" placeholder="Height (cm)" style="margin-bottom:0;"/></div><input class="fi" id="ob-age" type="number" placeholder="Age (years)"/><div class="ob-err" id="ob-e2"></div><button class="ob-btn" onclick="obNext(2)">Continue →</button></div>
-    <div class="ob-step" id="obs3"><div class="ob-emoji">🎯</div><div class="ob-h">Where are you <em>right now?</em></div><div class="ob-p">Pick the one that sounds like you.</div><div class="ob-grid" id="ob-lvl-grid"><div class="ob-opt" data-v="Never worked out" onclick="pickOb(this,'lvl')"><div class="oi">🧍</div><div class="ol">Never worked out</div></div><div class="ob-opt" data-v="Sometimes workout" onclick="pickOb(this,'lvl')"><div class="oi">🏃</div><div class="ol">Sometimes workout</div></div><div class="ob-opt" data-v="Few months in" onclick="pickOb(this,'lvl')"><div class="oi">💪</div><div class="ol">Few months in</div></div><div class="ob-opt" data-v="Not gaining weight" onclick="pickOb(this,'lvl')"><div class="oi">😤</div><div class="ol">Not gaining weight</div></div></div><div class="ob-err" id="ob-e3"></div><button class="ob-btn" onclick="obNext(3)">Continue →</button></div>
-    <div class="ob-step" id="obs4"><div class="ob-emoji">🚀</div><div class="ob-h">You're in, <em id="ob-fn">champ</em>!</div><div class="ob-p" id="ob-fp">Your plan is ready!</div><button class="ob-btn g" onclick="enterApp()">Open My Plan 🚀</button></div>
+    <div class="ob-step" id="obs2"><div class="ob-emoji">⚖️</div><div class="ob-h">Your <em>body stats</em></div><div class="ob-p">We'll set your calorie, protein & bulk targets from this.</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:9px;"><input class="fi" id="ob-wt" type="number" placeholder="Current weight (kg)" style="margin-bottom:0;"/><input class="fi" id="ob-tw" type="number" placeholder="Target weight (kg)" style="margin-bottom:0;"/></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:9px;"><input class="fi" id="ob-ht" type="number" placeholder="Height (cm)" style="margin-bottom:0;"/><input class="fi" id="ob-age" type="number" placeholder="Age (years)" style="margin-bottom:0;"/></div><div class="ob-err" id="ob-e2"></div><button class="ob-btn" onclick="obNext(2)">Continue →</button></div>
+    <div class="ob-step" id="obs3"><div class="ob-emoji">🍱</div><div class="ob-h">Your <em>food profile</em></div><div class="ob-p">So your meal plans feel made for you — not some random.</div>
+      <div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.05em;">Diet Type</div><div class="ob-grid" id="ob-diet-grid" style="grid-template-columns:repeat(3,1fr);"><div class="ob-opt" data-v="veg" onclick="pickOb(this,'diet')"><div class="oi">🥦</div><div class="ol">Vegetarian</div></div><div class="ob-opt" data-v="eggetarian" onclick="pickOb(this,'diet')"><div class="oi">🥚</div><div class="ol">Eggetarian</div></div><div class="ob-opt" data-v="non-veg" onclick="pickOb(this,'diet')"><div class="oi">🍗</div><div class="ol">Non-Veg</div></div></div></div>
+      <div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.05em;">Your City / State</div><input class="fi" id="ob-region" type="text" placeholder="e.g. Delhi, Mumbai, Punjab…" style="margin-bottom:0;"/></div>
+      <div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.05em;">Monthly Food Budget</div><div class="ob-grid" id="ob-budget-grid" style="grid-template-columns:repeat(3,1fr);"><div class="ob-opt" data-v="low" onclick="pickOb(this,'budget')"><div class="oi">💸</div><div class="ol">Under ₹3k</div></div><div class="ob-opt" data-v="mid" onclick="pickOb(this,'budget')"><div class="oi">💰</div><div class="ol">₹3k–6k</div></div><div class="ob-opt" data-v="high" onclick="pickOb(this,'budget')"><div class="oi">🤑</div><div class="ol">₹6k+</div></div></div></div>
+      <div class="ob-err" id="ob-e3"></div><button class="ob-btn" onclick="obNext(3)">Continue →</button></div>
+    <div class="ob-step" id="obs4"><div class="ob-emoji">🎯</div><div class="ob-h">Where are you <em>right now?</em></div><div class="ob-p">Pick the one that sounds like you.</div><div class="ob-grid" id="ob-lvl-grid"><div class="ob-opt" data-v="Never worked out" onclick="pickOb(this,'lvl')"><div class="oi">🧍</div><div class="ol">Never worked out</div></div><div class="ob-opt" data-v="Sometimes workout" onclick="pickOb(this,'lvl')"><div class="oi">🏃</div><div class="ol">Sometimes workout</div></div><div class="ob-opt" data-v="Few months in" onclick="pickOb(this,'lvl')"><div class="oi">💪</div><div class="ol">Few months in</div></div><div class="ob-opt" data-v="Not gaining weight" onclick="pickOb(this,'lvl')"><div class="oi">😤</div><div class="ol">Not gaining weight</div></div></div><div class="ob-err" id="ob-e4"></div><button class="ob-btn" onclick="obNext(4)">Continue →</button></div>
+    <div class="ob-step" id="obs5"><div class="ob-emoji">🚀</div><div class="ob-h">You're in, <em id="ob-fn">champ</em>!</div><div class="ob-p" id="ob-fp">Your plan is ready!</div><button class="ob-btn g" onclick="enterApp()">Open My Plan 🚀</button></div>
   </div>
 </div>
 
@@ -1399,7 +1466,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       <button class="btn btn-green" id="m-btn" onclick="genMeal()" style="margin-bottom:11px;">🍽️ Build My Meal Plan</button>
       <div class="loading-card" id="m-load"><div class="spin spg"></div><div style="font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;margin-bottom:5px;">Cooking your plan 👨‍🍳</div><div style="font-size:12px;color:var(--muted);">Just a moment…</div></div>
       <div class="result-card" id="m-result">
-        <div class="res-top"><div><div class="res-name">Your Plan, <span id="m-rname" style="color:var(--primary);">—</span> 💪</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">Personalised for your body</div></div><div class="cal-chip"><div class="cal-num" id="m-rcal">—</div><div class="cal-lbl">kcal/day</div></div></div>
+        <div class="res-top"><div><div class="res-name">Your Plan, <span id="m-rname" style="color:var(--primary);">—</span> 💪</div><div style="font-size:11px;color:var(--muted);margin-top:3px;" id="m-rsub">Personalised for your body</div></div><div class="cal-chip"><div class="cal-num" id="m-rcal">—</div><div class="cal-lbl">kcal/day</div></div></div>
         <div id="m-meals"></div>
         <div class="macro-row"><div class="mc"><div class="mv mvp" id="m-mp">—</div><div class="ml">Protein</div></div><div class="mc"><div class="mv mvc" id="m-mc">—</div><div class="ml">Carbs</div></div><div class="mc"><div class="mv mvf" id="m-mf">—</div><div class="ml">Fats</div></div></div>
         <div class="coach-box" style="margin-top:11px;"><div style="font-size:20px;">🔥</div><div class="cb-text" id="m-note">Stay consistent!</div></div>
