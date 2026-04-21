@@ -77,10 +77,18 @@ let selectedChips=new Set(),obStep=1,obLevel='';
 /* ═══════════════════════════════════════════════════
    SECTION 4 — FIRESTORE: SAVE & LOAD
 ═══════════════════════════════════════════════════ */
-async function saveFS(){
+let _saveTimer=null;
+function saveFS(){
   if(!currentUID||!_appReady)return;
-  try{await setDoc(doc(db,'users',currentUID),{user:{...user},gs:{...gs},tasksDone:[...tasksDone],recentWorkouts,weightLog,bodyStats,photos,muscleFocus,updatedAt:serverTimestamp()},{merge:true});}
-  catch(e){console.error(e);}
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(()=>saveFSNow(),1500);
+}
+async function saveFSNow(){
+  if(!currentUID||!_appReady)return;
+  if(weightLog.length>90)weightLog=weightLog.slice(-90);
+  const safePhotos=photos.map(p=>p&&p.startsWith('data:')?'__local__':p);
+  try{await setDoc(doc(db,'users',currentUID),{user:{...user},gs:{...gs},tasksDone:[...tasksDone],recentWorkouts,weightLog,bodyStats,photos:safePhotos,muscleFocus,updatedAt:serverTimestamp()},{merge:true});}
+  catch(e){console.error('saveFS error:',e);}
 }
 async function loadFS(uid){
   try{
@@ -164,7 +172,7 @@ onAuthStateChanged(auth,async(fu)=>{
 renderObProg();
       document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('show'));
       g('obs1').classList.add('show');
-    }else{const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}setTimeout(()=>{try{initApp();switchTab('home');saveFS();}catch(e){console.error(e);}},350);}
+    }else{const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}setTimeout(()=>{try{initApp();switchTab('home');saveFSNow();}catch(e){console.error(e);}},350);}
   }else{
     currentUID=null;
     ['page-app','page-ob'].forEach(p=>{const el=g(p);if(el){el.classList.remove('active');el.style.display='none';}});
@@ -267,16 +275,22 @@ window.doLogout=function(){
 /* ═══════════════════════════════════════════════════
    SECTION 7 — LEADERBOARD SUBSCRIPTION
 ═══════════════════════════════════════════════════ */
+let _lbDebounce=null;
 function subscribeLB(){
   if(lbUnsub){lbUnsub();lbUnsub=null;}
-  lbUnsub=onSnapshot(collection(db,'users'),snap=>{
+  // Only fetch top 50 by weeklyPts — not the entire collection
+  const lbQuery=db.collection('users').orderBy('gs.weeklyPts','desc').limit(50);
+  lbUnsub=onSnapshot(lbQuery,snap=>{
     window._lbData=snap.docs.map(d=>{const dt=d.data();return{uid:d.id,name:dt.user?.name||'Player',avatar:dt.user?.avatar||'💪',weeklyPts:dt.gs?.weeklyPts||0,allTimePts:dt.gs?.allTimePts||0,streak:dt.gs?.streak||0,habitStreak:dt.gs?.habitStreak||0,totalWo:dt.gs?.totalWo||0,level:dt.gs?.level||1};});
-    if(g('lb-weekly-list'))renderLeaderboard();
-    // Refresh rank in profile and home whenever LB data updates
-    const rk=myRank();
-    const rv=g('prof-rank-val');if(rv)rv.textContent=rk>0?'#'+rk:'—';
-    const rp=g('prof-rank-pill');if(rp)rp.textContent='🏆 #'+(rk>0?rk:'—');
-    const dr=g('d-rank');if(dr)dr.textContent=rk>0?'#'+rk:'—';
+    // Debounce re-renders to max once per second
+    clearTimeout(_lbDebounce);
+    _lbDebounce=setTimeout(()=>{
+      if(g('lb-weekly-list'))renderLeaderboard();
+      const rk=myRank();
+      const rv=g('prof-rank-val');if(rv)rv.textContent=rk>0?'#'+rk:'—';
+      const rp=g('prof-rank-pill');if(rp)rp.textContent='🏆 #'+(rk>0?rk:'—');
+      const dr=g('d-rank');if(dr)dr.textContent=rk>0?'#'+rk:'—';
+    },1000);
   },e=>console.error('LB error:',e));
 }
 
@@ -314,7 +328,7 @@ window.obNext=async function(step){
   g('obs'+obStep).classList.add('show');renderObProg();
 };
 window.pickOb=function(el,g2){document.querySelectorAll(`#ob-${g2}-grid .ob-opt`).forEach(e=>e.classList.remove('sel'));el.classList.add('sel');if(g2==='lvl')obLevel=el.dataset.v;};
-window.enterApp=async function(){const po=g('page-ob');if(po){po.classList.remove('active');po.style.display='none';}const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}_appReady=true;setTimeout(()=>{try{initApp();switchTab('home');}catch(e){console.error(e);}},320);saveFS().catch(console.error);};
+window.enterApp=async function(){const po=g('page-ob');if(po){po.classList.remove('active');po.style.display='none';}const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}_appReady=true;setTimeout(()=>{try{initApp();switchTab('home');}catch(e){console.error(e);}},320);saveFSNow().catch(console.error);};
 function calcTargets(){
   const w=parseFloat(user.weight)||60,h=parseFloat(user.height)||175,a=parseFloat(user.age)||20;
   const bmr=Math.round(88.36+(13.4*w)+(4.8*h)-(5.7*a));
@@ -391,6 +405,7 @@ function initApp(){
   checkWeeklyReset();
   updateWeeklyStreak();
   updateXP();updateRings();drawChart();buildTasks();buildMission();renderWoPlans('home');renderRecent();buildAchievements();subscribeLB();
+  if(gs.notifsEnabled)scheduleNotifications();
   const _used=gs.mealPlansUsed||0,_lim=3,_rem=_lim-_used;
   const _mb=g('m-btn');if(_mb){if(_rem<=0){_mb.disabled=true;_mb.textContent='🔒 Limit Reached ('+_used+'/'+_lim+')';}else if(_used>0)_mb.textContent='🍽️ Build My Meal Plan ('+_rem+' left)';}
 }
@@ -547,12 +562,14 @@ function renderLeaderboard(){
   if(g('habit-streak-val'))g('habit-streak-val').textContent=(gs.habitStreak||0)+' days';
   if(g('habit-score-val'))g('habit-score-val').textContent=gs.weeklyPts;
 }
+function sanitize(str){const d=document.createElement('div');d.textContent=String(str||'');return d.innerHTML;}
 function lbEntry(p,rank,type,isMe){
   const medal=rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':null;
   const pts=type==='weekly'?p.weeklyPts:type==='alltime'?p.allTimePts:p.habitStreak;
   const ptsLbl=type==='habits'?'day str.':'pts';
   const sub=type==='weekly'?`${p.totalWo} workouts · Lv${p.level}`:type==='alltime'?`${p.totalWo} workouts · ${p.streak}d streak`:`${p.totalWo} workouts done`;
-  return`<div class="lb-entry${isMe?' me':''}${rank===1?' top1':rank===2?' top2':rank===3?' top3':''}"><div style="width:28px;text-align:center;flex-shrink:0;">${medal?`<span style="font-size:20px;">${medal}</span>`:`<span style="font-family:Nunito,sans-serif;font-size:14px;font-weight:900;color:var(--muted);">${rank}</span>`}</div><div class="lb-avatar">${p.avatar}</div><div class="lb-info"><div class="lb-uname">${p.name}${isMe?'<span class="you-tag">You</span>':''}</div><div class="lb-stats">${sub}</div>${p.streak>=3?`<div class="streak-pill">🔥 ${p.streak} days</div>`:''}</div><div style="text-align:right;flex-shrink:0;"><div class="lb-pts-val">${pts}</div><div class="lb-pts-lbl">${ptsLbl}</div></div></div>`;
+  const safeName=sanitize(p.name);
+  return`<div class="lb-entry${isMe?' me':''}${rank===1?' top1':rank===2?' top2':rank===3?' top3':''}"><div style="width:28px;text-align:center;flex-shrink:0;">${medal?`<span style="font-size:20px;">${medal}</span>`:`<span style="font-family:Nunito,sans-serif;font-size:14px;font-weight:900;color:var(--muted);">${rank}</span>`}</div><div class="lb-avatar">${p.avatar}</div><div class="lb-info"><div class="lb-uname">${safeName}${isMe?'<span class="you-tag">You</span>':''}</div><div class="lb-stats">${sub}</div>${p.streak>=3?`<div class="streak-pill">🔥 ${p.streak} days</div>`:''}</div><div style="text-align:right;flex-shrink:0;"><div class="lb-pts-val">${pts}</div><div class="lb-pts-lbl">${ptsLbl}</div></div></div>`;
 }
 function buildHabitViz(){
   const woToday=tasksDone.has('t3');
@@ -653,7 +670,7 @@ function completeWorkout(){
   if(gs.workoutDates.length>90)gs.workoutDates=gs.workoutDates.slice(-90);
   // Only award XP once per day
   if(!xpAlreadyGiven)addXP(xpE,'Workout done');
-  else{showToast('💪 Workout saved! XP already earned today.');saveFS();}
+  else{showToast('💪 Workout saved! XP already earned today.');saveFSNow();}
 }
 window.finishWorkout=function(){g('completeOverlay').classList.remove('show');g('wo-overlay').classList.remove('show');aw=null;renderRecent();updateXP();updateRings();drawChart();buildTasks();buildAchievements();switchTab('home');};
 window.confirmStop=function(){if(confirm('Stop workout?')){clearInterval(woTmr);clearInterval(restTmr);g('restOverlay').classList.remove('show');g('wo-overlay').classList.remove('show');aw=null;}};
@@ -897,9 +914,24 @@ window.addPhoto=function(i){
   const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
   inp.onchange=function(){
     const file=inp.files[0];if(!file)return;
+    // Compress to max 800px and quality 0.7 before storing
     if(file.size>5*1024*1024){showToast('⚠️ Max 5MB');return;}
     const r=new FileReader();
-    r.onload=function(e){photos[i]=e.target.result;buildPhotoGrid();showToast('📸 Saved!');saveFS();};
+    r.onload=function(ev){
+      const img=new Image();
+      img.onload=function(){
+        const canvas=document.createElement('canvas');
+        const MAX=800;
+        let w=img.width,h=img.height;
+        if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+        if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        photos[i]=canvas.toDataURL('image/jpeg',0.7);
+        buildPhotoGrid();showToast('📸 Photo saved locally!');saveFS();
+      };
+      img.src=ev.target.result;
+    };
     r.readAsDataURL(file);
   };inp.click();
 };
@@ -951,6 +983,9 @@ window.switchTab=function(t){
   if(t==='progress')buildProgress();
   if(t==='meal')showFoodProfileIfNeeded();
   if(t==='profile'){
+    // Update notification button state
+    const nb=g('notif-btn');
+    if(nb&&Notification.permission==='granted'){nb.querySelector('.sl-lbl').textContent='🔔 Notifications On';nb.style.background='var(--gl)';}
     buildAchievements();
     // Refresh rank now that LB data may have arrived
     const rk=myRank();
@@ -974,6 +1009,290 @@ Enter a number from 1–6:`,''+cur);
   showToast(`✅ Rest days set to ${v}/week`);
   saveFS();
 };
+
+/* ═══════════════════════════════════════════════════
+   PUSH NOTIFICATIONS
+   - Daily reminder at 8PM if no workout logged
+   - Streak warning if streak > 0 and no workout yet this week
+   - Weekly leaderboard nudge every Monday 9AM
+═══════════════════════════════════════════════════ */
+async function requestNotifPermission(){
+  if(!('Notification' in window)){showToast('⚠️ Notifications not supported on this browser');return false;}
+  if(Notification.permission==='granted')return true;
+  if(Notification.permission==='denied'){showToast('⚠️ Notifications blocked — enable in browser settings');return false;}
+  const perm=await Notification.requestPermission();
+  return perm==='granted';
+}
+
+function scheduleNotifications(){
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  // Clear any existing scheduled checks
+  if(window._notifTimer)clearInterval(window._notifTimer);
+  // Check every 5 minutes if we should fire a notification
+  window._notifTimer=setInterval(checkAndNotify, 5*60*1000);
+  checkAndNotify(); // also check immediately on load
+}
+
+function checkAndNotify(){
+  if(Notification.permission!=='granted')return;
+  const now=new Date();
+  const h=now.getHours(),m=now.getMinutes();
+  const today=now.toLocaleDateString('en-GB');
+  const dayOfWeek=now.getDay(); // 0=Sun, 1=Mon
+
+  // ── Daily reminder at 8PM if no workout logged today ──
+  if(h===20&&m<5){
+    const lastNotif=localStorage.getItem('notif_daily');
+    if(lastNotif!==today&&!tasksDone.has('t3')){
+      localStorage.setItem('notif_daily',today);
+      fireNotif(
+        '💪 Time to train, '+user.name+'!',
+        'You haven't logged a workout today. Even 20 mins counts!',
+        '/?tab=workout'
+      );
+    }
+  }
+
+  // ── Streak warning — Sunday 7PM if no workout logged this week ──
+  if(dayOfWeek===0&&h===19&&m<5){
+    const weekKey=getCurrentWeekKey();
+    const lastWarn=localStorage.getItem('notif_streak_warn');
+    if(lastWarn!==weekKey&&gs.streak>0&&gs.weeklyWoCount===0){
+      localStorage.setItem('notif_streak_warn',weekKey);
+      fireNotif(
+        '🔥 Streak at risk, '+user.name+'!',
+        'Your '+gs.streak+'-week streak will reset tonight. Log a workout now!',
+        '/?tab=workout'
+      );
+    }
+  }
+
+  // ── Weekly leaderboard update — Monday 9AM ──
+  if(dayOfWeek===1&&h===9&&m<5){
+    const weekKey=getCurrentWeekKey();
+    const lastLB=localStorage.getItem('notif_lb_week');
+    if(lastLB!==weekKey&&window._lbData&&window._lbData.length>0){
+      localStorage.setItem('notif_lb_week',weekKey);
+      const rank=myRank();
+      fireNotif(
+        '🏆 New week, new leaderboard!',
+        rank>0?'You're ranked #'+rank+' this week. Can you climb higher?':'A new week starts — get on the leaderboard!',
+        '/?tab=leaderboard'
+      );
+    }
+  }
+}
+
+function fireNotif(title,body,url){
+  try{
+    const n=new Notification(title,{
+      body,
+      icon:'/icon-192.png',
+      badge:'/icon-192.png',
+      tag:'bulkup-'+Date.now(),
+      requireInteraction:false
+    });
+    n.onclick=function(){window.focus();n.close();};
+  }catch(e){console.warn('Notif error:',e);}
+}
+
+window.enableNotifications=async function(){
+  const granted=await requestNotifPermission();
+  if(granted){
+    gs.notifsEnabled=true;
+    scheduleNotifications();
+    saveFS();
+    showToast('🔔 Notifications enabled!');
+    // Update button state
+    const btn=g('notif-btn');
+    if(btn){btn.textContent='🔔 Notifications On';btn.style.background='var(--gl)';btn.style.color='var(--gd)';btn.style.borderColor='var(--green)';}
+  }
+};
+
+/* ═══════════════════════════════════════════════════
+   SHARE CARD
+   Generates a canvas image the user can save/share
+   Two modes: weekly stats | full profile card
+═══════════════════════════════════════════════════ */
+window.showShareOptions=function(){
+  const el=g('share-options');
+  if(el)el.style.display=el.style.display==='none'?'flex':'none';
+};
+
+window.shareWeeklyCard=function(){generateShareCard('weekly');};
+window.shareProfileCard=function(){generateShareCard('profile');};
+
+function generateShareCard(type){
+  const canvas=document.createElement('canvas');
+  canvas.width=1080;canvas.height=1080;
+  const ctx=canvas.getContext('2d');
+
+  if(type==='weekly'){
+    // Background gradient
+    const grad=ctx.createLinearGradient(0,0,1080,1080);
+    grad.addColorStop(0,'#4f46e5');grad.addColorStop(1,'#7c3aed');
+    ctx.fillStyle=grad;ctx.fillRect(0,0,1080,1080);
+
+    // Decorative circles
+    ctx.beginPath();ctx.arc(950,130,220,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.06)';ctx.fill();
+    ctx.beginPath();ctx.arc(100,950,180,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fill();
+
+    // App name
+    ctx.fillStyle='rgba(255,255,255,0.7)';
+    ctx.font='bold 38px Arial';ctx.textAlign='left';
+    ctx.fillText('BulkUp 💪', 80, 100);
+
+    // Week label
+    ctx.fillStyle='rgba(255,255,255,0.55)';
+    ctx.font='32px Arial';
+    ctx.fillText('Weekly Summary', 80, 155);
+
+    // Name
+    ctx.fillStyle='#ffffff';
+    ctx.font='bold 80px Arial';
+    ctx.fillText(user.name, 80, 280);
+
+    // Stats grid
+    const stats=[
+      {label:'Workouts',value:gs.weeklyWoCount||0,icon:'💪'},
+      {label:'Week Streak',value:gs.streak,icon:'🔥'},
+      {label:'Weekly XP',value:gs.weeklyPts,icon:'⚡'},
+      {label:'Rank',value:myRank()>0?'#'+myRank():'—',icon:'🏆'},
+    ];
+    stats.forEach((s,i)=>{
+      const col=i%2, row=Math.floor(i/2);
+      const x=80+col*500, y=370+row*220;
+      // Card bg
+      ctx.fillStyle='rgba(255,255,255,0.12)';
+      roundRect(ctx,x,y,440,180,24);ctx.fill();
+      // Icon + value
+      ctx.font='52px Arial';ctx.fillText(s.icon,x+30,y+80);
+      ctx.fillStyle='#ffffff';ctx.font='bold 72px Arial';
+      ctx.fillText(String(s.value),x+30,y+155);
+      ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='32px Arial';
+      ctx.fillText(s.label,x+30,y+195);
+    });
+
+    // Level badge
+    const li=lvlInfo();
+    ctx.fillStyle='rgba(255,255,255,0.15)';
+    roundRect(ctx,80,870,400,80,40);ctx.fill();
+    ctx.fillStyle='#ffffff';ctx.font='bold 34px Arial';
+    ctx.fillText('Level '+li.level+' · '+li.title,110,922);
+
+    // Watermark
+    ctx.fillStyle='rgba(255,255,255,0.35)';
+    ctx.font='28px Arial';ctx.textAlign='right';
+    ctx.fillText('bulkup.netlify.app',1000,1050);
+
+  } else {
+    // FULL PROFILE CARD
+    const grad=ctx.createLinearGradient(0,0,0,1080);
+    grad.addColorStop(0,'#0f172a');grad.addColorStop(1,'#1e293b');
+    ctx.fillStyle=grad;ctx.fillRect(0,0,1080,1080);
+
+    // Accent bar at top
+    const accent=ctx.createLinearGradient(0,0,1080,0);
+    accent.addColorStop(0,'#4f46e5');accent.addColorStop(1,'#22c55e');
+    ctx.fillStyle=accent;ctx.fillRect(0,0,1080,8);
+
+    // App name
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.font='bold 36px Arial';ctx.textAlign='left';
+    ctx.fillText('BulkUp 💪', 80, 90);
+
+    // Avatar circle
+    ctx.beginPath();ctx.arc(540,220,100,0,Math.PI*2);
+    ctx.fillStyle='#4f46e5';ctx.fill();
+    ctx.font='80px Arial';ctx.textAlign='center';
+    ctx.fillText(user.avatar||'💪',540,250);
+
+    // Name + level
+    ctx.fillStyle='#ffffff';ctx.font='bold 72px Arial';ctx.textAlign='center';
+    ctx.fillText(user.name,540,370);
+    const li=lvlInfo();
+    ctx.fillStyle='#a5b4fc';ctx.font='38px Arial';
+    ctx.fillText('Level '+li.level+' · '+li.title,540,425);
+
+    // XP bar
+    ctx.fillStyle='rgba(255,255,255,0.1)';
+    roundRect(ctx,120,460,840,24,12);ctx.fill();
+    ctx.fillStyle='#4f46e5';
+    roundRect(ctx,120,460,Math.round(840*li.pct/100),24,12);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='26px Arial';ctx.textAlign='center';
+    ctx.fillText(gs.xp+' XP · '+li.pct+'% to next level',540,510);
+
+    // Stats
+    const stats=[
+      {l:'Workouts',v:gs.totalWo,c:'#22c55e'},
+      {l:'Streak',v:gs.streak+'wk',c:'#f97316'},
+      {l:'Rank',v:myRank()>0?'#'+myRank():'—',c:'#eab308'},
+      {l:'Habits',v:(gs.habitStreak||0)+'d',c:'#a855f7'},
+    ];
+    stats.forEach((s,i)=>{
+      const x=120+i*210, y=560;
+      ctx.fillStyle='rgba(255,255,255,0.07)';
+      roundRect(ctx,x,y,190,160,18);ctx.fill();
+      ctx.fillStyle=s.c;ctx.font='bold 58px Arial';ctx.textAlign='center';
+      ctx.fillText(String(s.v),x+95,y+90);
+      ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='26px Arial';
+      ctx.fillText(s.l,x+95,y+140);
+    });
+
+    // Achievements row
+    const earned=ACHIEVE.filter(a=>a.u());
+    ctx.fillStyle='rgba(255,255,255,0.06)';
+    roundRect(ctx,80,760,920,120,20);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='28px Arial';ctx.textAlign='left';
+    ctx.fillText('Achievements: '+earned.length+'/'+ACHIEVE.length,110,810);
+    earned.slice(0,8).forEach((a,i)=>{
+      ctx.font='42px Arial';ctx.fillText(a.i,110+i*95,870);
+    });
+
+    // Weight progress
+    if(weightLog.length>=2){
+      const gained=(weightLog[weightLog.length-1].w-weightLog[0].w).toFixed(1);
+      ctx.fillStyle='#22c55e';ctx.font='bold 38px Arial';ctx.textAlign='center';
+      ctx.fillText((+gained>0?'+':'')+gained+'kg since Day 1 💪',540,960);
+    }
+
+    // Watermark
+    ctx.fillStyle='rgba(255,255,255,0.2)';
+    ctx.font='26px Arial';ctx.textAlign='center';
+    ctx.fillText('bulkup.netlify.app',540,1050);
+  }
+
+  // Download the image
+  canvas.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='bulkup-'+type+'-'+new Date().toLocaleDateString('en-GB').replace(/\//g,'-')+'.png';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('📸 Card saved! Share it on Instagram 🔥');
+  },'image/png');
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+/* ═══════════════════════════════════════════════════
+   FEEDBACK
+═══════════════════════════════════════════════════ */
+window.openFeedback=function(){
+  window.open('https://forms.gle/sR8nKajRvRbcjR3RA','_blank');
+};
+
 // ── Expose every function as true window global ──────────────────────────
 // Needed because onclick="" in HTML runs in global scope, not module scope.
 [['showAuthTab',window.showAuthTab],['doEmailLogin',window.doEmailLogin],
@@ -1638,10 +1957,21 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
         <div class="card" style="margin-bottom:0;text-align:center;"><div style="font-family:'Nunito',sans-serif;font-size:20px;font-weight:900;color:#f59e0b;" id="prof-rank-val">—</div><div style="font-size:11px;color:var(--muted);margin-top:3px;font-weight:600;">Rank</div></div>
       </div>
       <div class="card"><div class="card-title">🏆 Achievements</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;" id="achieve-grid"></div></div>
+      <!-- SHARE CARD -->
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-title" style="margin-bottom:10px;">📤 Share Your Progress</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:11px;">Generate a card to share on Instagram or WhatsApp</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="shareWeeklyCard()" style="flex:1;padding:12px 8px;border:none;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;">📊 Weekly Stats</button>
+          <button onclick="shareProfileCard()" style="flex:1;padding:12px 8px;border:none;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;">🏆 Full Profile</button>
+        </div>
+      </div>
+
       <div class="settings-list">
         <div class="sl-item" onclick="switchTab('progress')"><div class="sl-icon" style="background:var(--gl);">📈</div><div class="sl-lbl">View Progress</div><div class="sl-arrow">›</div></div>
         <div class="sl-item" onclick="switchTab('leaderboard')"><div class="sl-icon" style="background:var(--yl);">🏆</div><div class="sl-lbl">Live Leaderboard</div><div class="sl-arrow">›</div></div>
-        <div class="sl-item" onclick="showToast('🔔 Reminders coming soon!')"><div class="sl-icon" style="background:var(--surface);">🔔</div><div class="sl-lbl">Daily Reminders</div><div class="sl-arrow">›</div></div>
+        <div class="sl-item" id="notif-btn" onclick="enableNotifications()" style="cursor:pointer;"><div class="sl-icon" style="background:var(--pl);">🔔</div><div class="sl-lbl">Enable Notifications</div><div class="sl-arrow">›</div></div>
+        <div class="sl-item" onclick="openFeedback()"><div class="sl-icon" style="background:#dcfce7;">💬</div><div class="sl-lbl">Send Feedback</div><div class="sl-arrow">›</div></div>
         <div class="sl-item" onclick="doLogout()"><div class="sl-icon" style="background:var(--rl);">🚪</div><div class="sl-lbl" style="color:var(--red);">Sign Out</div><div class="sl-arrow">›</div></div>
       </div>
       <div style="height:80px;"></div>
