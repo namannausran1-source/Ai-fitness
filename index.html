@@ -1047,7 +1047,7 @@ function checkAndNotify(){
       localStorage.setItem('notif_daily',today);
       fireNotif(
         '💪 Time to train, '+user.name+'!',
-        'You haven't logged a workout today. Even 20 mins counts!',
+        'You have not logged a workout today. Even 20 mins counts!',
         '/?tab=workout'
       );
     }
@@ -1061,7 +1061,7 @@ function checkAndNotify(){
       localStorage.setItem('notif_streak_warn',weekKey);
       fireNotif(
         '🔥 Streak at risk, '+user.name+'!',
-        'Your '+gs.streak+'-week streak will reset tonight. Log a workout now!',
+        'Your '+gs.streak+' week streak resets tonight. Log a workout now!',
         '/?tab=workout'
       );
     }
@@ -1076,7 +1076,7 @@ function checkAndNotify(){
       const rank=myRank();
       fireNotif(
         '🏆 New week, new leaderboard!',
-        rank>0?'You're ranked #'+rank+' this week. Can you climb higher?':'A new week starts — get on the leaderboard!',
+        rank>0?'You are ranked #'+rank+' this week. Can you climb higher?':'A new week starts - get on the leaderboard!',
         '/?tab=leaderboard'
       );
     }
