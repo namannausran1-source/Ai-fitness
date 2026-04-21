@@ -278,9 +278,9 @@ window.doLogout=function(){
 let _lbDebounce=null;
 function subscribeLB(){
   if(lbUnsub){lbUnsub();lbUnsub=null;}
-  // Only fetch top 50 by weeklyPts — not the entire collection
-  const lbQuery=db.collection('users').orderBy('gs.weeklyPts','desc').limit(50);
-  lbUnsub=onSnapshot(lbQuery,snap=>{
+  // Fetch all users (simple query — no index needed)
+  // Client-side sort keeps it working without Firestore indexes
+  lbUnsub=onSnapshot(collection(db,'users'),snap=>{
     window._lbData=snap.docs.map(d=>{const dt=d.data();return{uid:d.id,name:dt.user?.name||'Player',avatar:dt.user?.avatar||'💪',weeklyPts:dt.gs?.weeklyPts||0,allTimePts:dt.gs?.allTimePts||0,streak:dt.gs?.streak||0,habitStreak:dt.gs?.habitStreak||0,totalWo:dt.gs?.totalWo||0,level:dt.gs?.level||1};});
     // Debounce re-renders to max once per second
     clearTimeout(_lbDebounce);
