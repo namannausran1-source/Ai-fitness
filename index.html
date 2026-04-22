@@ -983,9 +983,13 @@ window.switchTab=function(t){
   if(t==='progress')buildProgress();
   if(t==='meal')showFoodProfileIfNeeded();
   if(t==='profile'){
-    // Update notification button state
+    // Update notification button state — guard against Notification being undefined (Android WebView)
     const nb=g('notif-btn');
-    if(nb&&Notification.permission==='granted'){nb.querySelector('.sl-lbl').textContent='🔔 Notifications On';nb.style.background='var(--gl)';}
+    if(nb&&typeof Notification!=='undefined'&&Notification.permission==='granted'){
+      const lbl=nb.querySelector('.sl-lbl');
+      if(lbl)lbl.textContent='Notifications On ✅';
+      nb.style.background='var(--gl)';
+    }
     buildAchievements();
     // Refresh rank now that LB data may have arrived
     const rk=myRank();
@@ -1020,8 +1024,8 @@ async function requestNotifPermission(){
   if(!('Notification' in window)){showToast('⚠️ Notifications not supported on this browser');return false;}
   if(Notification.permission==='granted')return true;
   if(Notification.permission==='denied'){showToast('⚠️ Notifications blocked — enable in browser settings');return false;}
-  const perm=await Notification.requestPermission();
-  return perm==='granted';
+  try{const perm=await Notification.requestPermission();return perm==='granted';}
+  catch(e){showToast('⚠️ Notifications not supported here');return false;}
 }
 
 function scheduleNotifications(){
