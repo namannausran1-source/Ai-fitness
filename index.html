@@ -1021,7 +1021,7 @@ Enter a number from 1–6:`,''+cur);
    - Weekly leaderboard nudge every Monday 9AM
 ═══════════════════════════════════════════════════ */
 async function requestNotifPermission(){
-  if(!('Notification' in window)){showToast('⚠️ Notifications not supported on this browser');return false;}
+  if(typeof Notification==='undefined'||!('Notification' in window)){showToast('⚠️ Notifications not supported on this browser');return false;}
   if(Notification.permission==='granted')return true;
   if(Notification.permission==='denied'){showToast('⚠️ Notifications blocked — enable in browser settings');return false;}
   try{const perm=await Notification.requestPermission();return perm==='granted';}
@@ -1029,7 +1029,7 @@ async function requestNotifPermission(){
 }
 
 function scheduleNotifications(){
-  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  if(typeof Notification==='undefined'||!('Notification' in window)||Notification.permission!=='granted')return;
   // Clear any existing scheduled checks
   if(window._notifTimer)clearInterval(window._notifTimer);
   // Check every 5 minutes if we should fire a notification
@@ -1038,7 +1038,7 @@ function scheduleNotifications(){
 }
 
 function checkAndNotify(){
-  if(Notification.permission!=='granted')return;
+  if(typeof Notification==='undefined'||Notification.permission!=='granted')return;
   const now=new Date();
   const h=now.getHours(),m=now.getMinutes();
   const today=now.toLocaleDateString('en-GB');
@@ -1088,6 +1088,7 @@ function checkAndNotify(){
 }
 
 function fireNotif(title,body,url){
+  if(typeof Notification==='undefined')return;
   try{
     const n=new Notification(title,{
       body,
@@ -1101,22 +1102,40 @@ function fireNotif(title,body,url){
 }
 
 window.enableNotifications=async function(){
-  const granted=await requestNotifPermission();
-  if(granted){
-    gs.notifsEnabled=true;
-    scheduleNotifications();
-    saveFS();
-    showToast('🔔 Notifications enabled!');
-    // Update only the label text, NOT the whole element (would destroy icon/arrow)
-    const btn=g('notif-btn');
-    if(btn){
-      const lbl=btn.querySelector('.sl-lbl');
-      if(lbl)lbl.textContent='Notifications On ✅';
-      btn.style.background='var(--gl)';
+  const btn=g('notif-btn');
+  const lbl=btn?btn.querySelector('.sl-lbl'):null;
+  try{
+    // Register minimal service worker (needed for Android push)
+    if('serviceWorker' in navigator){
+      try{
+        const existing=await navigator.serviceWorker.getRegistration('/');
+        if(!existing){
+          const swCode=`self.addEventListener('push',e=>{const d=e.data?e.data.json():{title:'BulkUp 💪',body:'Time to train!'};self.registration.showNotification(d.title,{body:d.body,icon:'/icon-192.png'});});self.addEventListener('notificationclick',e=>{e.notification.close();clients.openWindow('/');});`;
+          const swUrl=URL.createObjectURL(new Blob([swCode],{type:'application/javascript'}));
+          await navigator.serviceWorker.register(swUrl,{scope:'/'}).catch(()=>{});
+        }
+      }catch(e){}
     }
-  } else {
-    showToast('⚠️ Notifications blocked — enable in browser settings');
-  }
+    // Request permission
+    let permission='denied';
+    if(typeof Notification!=='undefined'){
+      if(Notification.permission==='granted'){permission='granted';}
+      else if(Notification.permission!=='denied'){
+        try{permission=await Notification.requestPermission();}catch(e){permission='denied';}
+      }
+    }
+    if(permission==='granted'){
+      gs.notifsEnabled=true;saveFS();
+      showToast('🔔 Notifications enabled!');
+      if(lbl)lbl.textContent='Notifications On ✅';
+      if(btn)btn.style.background='var(--gl)';
+      try{new Notification('BulkUp 💪',{body:"You'll get reminders to stay consistent 🔥",icon:'/icon-192.png'});}catch(e){}
+    }else if(typeof Notification!=='undefined'&&Notification.permission==='denied'){
+      showToast('⚠️ Blocked! Tap ⋮ → Settings → Site Settings → Notifications → Allow');
+    }else{
+      showToast('📱 Tap ⋮ menu → Settings → Site Settings → Notifications → Allow for this site');
+    }
+  }catch(e){showToast('⚠️ Notifications unavailable on this device');console.warn(e);}
 };
 
 /* ═══════════════════════════════════════════════════
@@ -1291,20 +1310,23 @@ function generateShareCard(type){
         console.warn('Share API failed:',e);
       }
     }
-    // 2. Fallback: open in new tab — user can long-press → Save Image → share
+    // 2. Fallback: show image in an overlay so user can long-press → Save → share
     const url=URL.createObjectURL(blob);
-    const w=window.open(url,'_blank');
-    if(w){
-      showToast('📸 Long-press the image → Save → Share! 🔥');
-    } else {
-      // 3. Last resort download link
-      const a=document.createElement('a');
-      a.href=url;a.download=fileName;
-      document.body.appendChild(a);a.click();
-      document.body.removeChild(a);
-      showToast('📸 Card saved! Share it on Instagram 🔥');
-    }
-    setTimeout(()=>URL.revokeObjectURL(url),30000);
+    // Create a fullscreen overlay with the image
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
+    const img=document.createElement('img');
+    img.src=url;img.style.cssText='max-width:100%;max-height:75vh;border-radius:16px;';
+    const tip=document.createElement('div');
+    tip.style.cssText='color:#fff;font-size:14px;font-weight:700;margin-top:16px;text-align:center;line-height:1.6;';
+    tip.textContent='Long-press the image → Save / Share 📲';
+    const closeBtn=document.createElement('button');
+    closeBtn.textContent='✕ Close';
+    closeBtn.style.cssText='margin-top:14px;padding:12px 32px;border:none;border-radius:50px;background:#4f46e5;color:#fff;font-size:15px;font-weight:800;cursor:pointer;';
+    closeBtn.onclick=function(){document.body.removeChild(overlay);URL.revokeObjectURL(url);};
+    overlay.appendChild(img);overlay.appendChild(tip);overlay.appendChild(closeBtn);
+    document.body.appendChild(overlay);
+    showToast('📸 Long-press the image to save & share! 🔥');
   },'image/png');
 }
 
@@ -1322,7 +1344,13 @@ function roundRect(ctx,x,y,w,h,r){
    FEEDBACK
 ═══════════════════════════════════════════════════ */
 window.openFeedback=function(){
-  window.open('https://forms.gle/sR8nKajRvRbcjR3RA','_blank');
+  // window.open is blocked by Android popup blocker - use location.href instead
+  const url='https://forms.gle/sR8nKajRvRbcjR3RA';
+  try{
+    const a=document.createElement('a');
+    a.href=url;a.target='_blank';a.rel='noopener';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+  }catch(e){ window.location.href=url; }
 };
 
 // ── Direct window assignments — bulletproof global registration ──────────
