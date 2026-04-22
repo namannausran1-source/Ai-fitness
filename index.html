@@ -1103,11 +1103,11 @@ window.enableNotifications=async function(){
     scheduleNotifications();
     saveFS();
     showToast('🔔 Notifications enabled!');
-    // Update button state - update only the label span, not the whole item
+    // Update only the label text, NOT the whole element (would destroy icon/arrow)
     const btn=g('notif-btn');
     if(btn){
       const lbl=btn.querySelector('.sl-lbl');
-      if(lbl)lbl.textContent='🔔 Notifications On';
+      if(lbl)lbl.textContent='Notifications On ✅';
       btn.style.background='var(--gl)';
     }
   } else {
@@ -1270,15 +1270,37 @@ function generateShareCard(type){
     ctx.fillText('bulkup.netlify.app',540,1050);
   }
 
-  // Download the image
-  canvas.toBlob(blob=>{
+  // Share / Save — mobile-first (Android blocks silent a.click() downloads)
+  canvas.toBlob(async function(blob){
+    const fileName='bulkup-'+type+'-'+new Date().toLocaleDateString('en-GB').replace(/\//g,'-')+'.png';
+    // 1. Web Share API — opens native Android/iOS share sheet (WhatsApp, Instagram, etc.)
+    if(navigator.share && navigator.canShare){
+      try{
+        const file=new File([blob],fileName,{type:'image/png'});
+        if(navigator.canShare({files:[file]})){
+          await navigator.share({files:[file],title:'BulkUp — My Progress 💪'});
+          showToast('📸 Shared! 🔥');
+          return;
+        }
+      }catch(e){
+        if(e.name==='AbortError')return; // user cancelled
+        console.warn('Share API failed:',e);
+      }
+    }
+    // 2. Fallback: open in new tab — user can long-press → Save Image → share
     const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;
-    a.download='bulkup-'+type+'-'+new Date().toLocaleDateString('en-GB').replace(/\//g,'-')+'.png';
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('📸 Card saved! Share it on Instagram 🔥');
+    const w=window.open(url,'_blank');
+    if(w){
+      showToast('📸 Long-press the image → Save → Share! 🔥');
+    } else {
+      // 3. Last resort download link
+      const a=document.createElement('a');
+      a.href=url;a.download=fileName;
+      document.body.appendChild(a);a.click();
+      document.body.removeChild(a);
+      showToast('📸 Card saved! Share it on Instagram 🔥');
+    }
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
   },'image/png');
 }
 
@@ -1299,27 +1321,20 @@ window.openFeedback=function(){
   window.open('https://forms.gle/sR8nKajRvRbcjR3RA','_blank');
 };
 
-// ── Expose every function as true window global ──────────────────────────
-// Needed because onclick="" in HTML runs in global scope, not module scope.
-[['showAuthTab',window.showAuthTab],['doEmailLogin',window.doEmailLogin],
- ['doEmailSignup',window.doEmailSignup],['doGoogleSignIn',window.doGoogleSignIn],
- ['doLogout',window.doLogout],['switchTab',window.switchTab],
- ['switchMode',window.switchMode],['obNext',window.obNext],
- ['enterApp',window.enterApp],['pickOb',window.pickOb],
- ['toggleTask',window.toggleTask],['togglePlan',window.togglePlan],
- ['startWorkout',window.startWorkout],['markSet',window.markSet],
- ['quickLog',window.quickLog],['nextExercise',window.nextExercise],
- ['skipRest',window.skipRest],['finishWorkout',window.finishWorkout],
- ['confirmStop',window.confirmStop],['addXP',window.addXP],
- ['genMeal',window.genMeal],['toggleChip',window.toggleChip],['fpPick',window.fpPick],['saveFoodProfile',window.saveFoodProfile],['missionTap',window.missionTap],
- ['logWeight',window.logWeight],['saveBS',window.saveBS],
- ['addPhoto',window.addPhoto],['showToast',window.showToast],
- ['switchLbTab',window.switchLbTab],['buildAchievements',window.buildAchievements],
- ['shareWeeklyCard',window.shareWeeklyCard],['shareProfileCard',window.shareProfileCard],
- ['enableNotifications',window.enableNotifications],['openFeedback',window.openFeedback],
- ['showRestDaySetting',window.showRestDaySetting],
-].forEach(([name,fn])=>{ if(fn) window[name]=fn; });
-// ────────────────────────────────────────────────────────────────────────
+// ── Direct window assignments — bulletproof global registration ──────────
+// Functions already assigned to window.X above; these lines are a safety net
+// in case any were missed, ensuring onclick="" handlers always find them.
+(function(){
+  var fns = ['showAuthTab','doEmailLogin','doEmailSignup','doGoogleSignIn','doLogout',
+    'switchTab','switchMode','obNext','enterApp','pickOb','toggleTask','togglePlan',
+    'startWorkout','markSet','quickLog','nextExercise','skipRest','finishWorkout',
+    'confirmStop','addXP','genMeal','toggleChip','fpPick','saveFoodProfile','missionTap',
+    'logWeight','saveBS','addPhoto','showToast','switchLbTab','buildAchievements',
+    'shareWeeklyCard','shareProfileCard','enableNotifications','openFeedback',
+    'showShareOptions','showRestDaySetting'];
+  fns.forEach(function(n){ if(typeof window[n]==='undefined') console.warn('BulkUp: window.'+n+' not defined'); });
+})();
+// ─────────────────────────────────────────────────────────────────────────
 </script>
 
 <style>
@@ -1687,22 +1702,22 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 </div>
 
 
-<!-- AUTH PAGE — FITTR-style video background -->
-<div class="page" id="page-auth" style="background:linear-gradient(160deg,#0f0c1a 0%,#1a1035 40%,#0f1f12 100%);overflow:hidden;position:fixed;inset:0;">
+<!-- AUTH PAGE — video background with proper dark fallback -->
+<div class="page" id="page-auth" style="background:linear-gradient(160deg,#0d0b1a 0%,#12102a 45%,#0a1a0f 100%);overflow:hidden;position:fixed;inset:0;">
 
   <!-- VIDEO BACKGROUND -->
   <video
     id="auth-bg-video"
     autoplay muted loop playsinline
-    style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;z-index:0;"
+    style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;z-index:0;opacity:0.72;"
     src="https://raw.githubusercontent.com/namannausran1-source/Ai-fitness/main/bg.mp4"
   ></video>
 
-  <!-- Overlay layer 1: uniform dark tint — lighter so video shows through better -->
-  <div style="position:absolute;inset:0;z-index:1;background:rgba(0,0,0,0.35);"></div>
+  <!-- Overlay layer 1: subtle dark tint only -->
+  <div style="position:absolute;inset:0;z-index:1;background:rgba(0,0,0,0.28);"></div>
 
-  <!-- Overlay layer 2: gradient fade — reduced opacity to fix over-saturation -->
-  <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to bottom,rgba(0,0,0,0.0) 0%,rgba(0,0,0,0.1) 30%,rgba(59,50,180,0.55) 58%,rgba(20,16,55,0.92) 80%,rgba(10,6,25,0.98) 100%);"></div>
+  <!-- Overlay layer 2: gentle gradient fade — MUCH less blue saturation -->
+  <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to bottom,transparent 0%,transparent 30%,rgba(30,22,80,0.45) 60%,rgba(15,10,40,0.88) 82%,rgba(8,5,20,0.97) 100%);"></div>
 
   <!-- Content on top -->
   <div style="position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;justify-content:space-between;overflow-y:auto;padding:3.5rem 1.5rem 2.5rem;">
