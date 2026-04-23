@@ -1101,41 +1101,47 @@ function fireNotif(title,body,url){
   }catch(e){console.warn('Notif error:',e);}
 }
 
-window.enableNotifications=async function(){
-  const btn=g('notif-btn');
-  const lbl=btn?btn.querySelector('.sl-lbl'):null;
-  try{
-    // Register minimal service worker (needed for Android push)
-    if('serviceWorker' in navigator){
-      try{
-        const existing=await navigator.serviceWorker.getRegistration('/');
-        if(!existing){
-          const swCode=`self.addEventListener('push',e=>{const d=e.data?e.data.json():{title:'BulkUp 💪',body:'Time to train!'};self.registration.showNotification(d.title,{body:d.body,icon:'/icon-192.png'});});self.addEventListener('notificationclick',e=>{e.notification.close();clients.openWindow('/');});`;
-          const swUrl=URL.createObjectURL(new Blob([swCode],{type:'application/javascript'}));
-          await navigator.serviceWorker.register(swUrl,{scope:'/'}).catch(()=>{});
+window.enableNotifications=function(){
+  var btn=g('notif-btn');
+  var lbl=btn?btn.querySelector('.sl-lbl'):null;
+  // Show a modal with instructions — works 100% on all Android devices
+  var modal=document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;';
+  modal.innerHTML='<div style="background:#fff;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;margin:0 auto;">'
+    +'<div style="font-family:Nunito,sans-serif;font-size:20px;font-weight:900;margin-bottom:6px;">🔔 Enable Notifications</div>'
+    +'<div style="font-size:13px;color:#64748b;margin-bottom:20px;line-height:1.6;">Get daily workout reminders & streak alerts from BulkUp.</div>'
+    +'<div style="background:#f0f4ff;border-radius:14px;padding:16px;margin-bottom:16px;">'
+    +'<div style="font-size:12px;font-weight:700;color:#4f46e5;margin-bottom:10px;">📱 HOW TO ENABLE ON ANDROID:</div>'
+    +'<div style="font-size:12px;color:#1e293b;line-height:1.8;">'
+    +'1. Tap the <b>⋮ menu</b> (top right of Chrome)<br>'
+    +'2. Go to <b>Settings</b><br>'
+    +'3. Tap <b>Site Settings</b><br>'
+    +'4. Tap <b>Notifications</b><br>'
+    +'5. Find <b>getbulkup.netlify.app</b> → <b>Allow</b>'
+    +'</div></div>'
+    +'<button id="notif-try-btn" style="width:100%;padding:15px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;">🔔 Request Permission Now</button>'
+    +'<button id="notif-close-btn" style="width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">Close</button>'
+    +'</div>';
+  document.body.appendChild(modal);
+  document.getElementById('notif-close-btn').onclick=function(){document.body.removeChild(modal);};
+  document.getElementById('notif-try-btn').onclick=function(){
+    if(typeof Notification!=='undefined'&&Notification.permission!=='denied'){
+      Notification.requestPermission().then(function(p){
+        if(p==='granted'){
+          gs.notifsEnabled=true;saveFS();
+          if(lbl)lbl.textContent='Notifications On ✅';
+          if(btn)btn.style.background='var(--gl)';
+          document.body.removeChild(modal);
+          showToast('🔔 Notifications enabled!');
+          try{new Notification('BulkUp 💪',{body:'Daily reminders are on! 🔥',icon:'/icon-192.png'});}catch(e){}
+        }else{
+          showToast('⚠️ Permission denied — follow the steps above');
         }
-      }catch(e){}
-    }
-    // Request permission
-    let permission='denied';
-    if(typeof Notification!=='undefined'){
-      if(Notification.permission==='granted'){permission='granted';}
-      else if(Notification.permission!=='denied'){
-        try{permission=await Notification.requestPermission();}catch(e){permission='denied';}
-      }
-    }
-    if(permission==='granted'){
-      gs.notifsEnabled=true;saveFS();
-      showToast('🔔 Notifications enabled!');
-      if(lbl)lbl.textContent='Notifications On ✅';
-      if(btn)btn.style.background='var(--gl)';
-      try{new Notification('BulkUp 💪',{body:"You'll get reminders to stay consistent 🔥",icon:'/icon-192.png'});}catch(e){}
-    }else if(typeof Notification!=='undefined'&&Notification.permission==='denied'){
-      showToast('⚠️ Blocked! Tap ⋮ → Settings → Site Settings → Notifications → Allow');
+      });
     }else{
-      showToast('📱 Tap ⋮ menu → Settings → Site Settings → Notifications → Allow for this site');
+      showToast('📱 Follow the steps above to enable in browser settings');
     }
-  }catch(e){showToast('⚠️ Notifications unavailable on this device');console.warn(e);}
+  };
 };
 
 /* ═══════════════════════════════════════════════════
@@ -1152,182 +1158,70 @@ window.shareWeeklyCard=function(){generateShareCard('weekly');};
 window.shareProfileCard=function(){generateShareCard('profile');};
 
 function generateShareCard(type){
-  const canvas=document.createElement('canvas');
+  // Draw the card
+  var canvas=document.createElement('canvas');
   canvas.width=1080;canvas.height=1080;
-  const ctx=canvas.getContext('2d');
+  var ctx=canvas.getContext('2d');
 
   if(type==='weekly'){
-    // Background gradient
-    const grad=ctx.createLinearGradient(0,0,1080,1080);
+    var grad=ctx.createLinearGradient(0,0,1080,1080);
     grad.addColorStop(0,'#4f46e5');grad.addColorStop(1,'#7c3aed');
     ctx.fillStyle=grad;ctx.fillRect(0,0,1080,1080);
-
-    // Decorative circles
-    ctx.beginPath();ctx.arc(950,130,220,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,255,255,0.06)';ctx.fill();
-    ctx.beginPath();ctx.arc(100,950,180,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fill();
-
-    // App name
-    ctx.fillStyle='rgba(255,255,255,0.7)';
-    ctx.font='bold 38px Arial';ctx.textAlign='left';
-    ctx.fillText('BulkUp 💪', 80, 100);
-
-    // Week label
-    ctx.fillStyle='rgba(255,255,255,0.55)';
-    ctx.font='32px Arial';
-    ctx.fillText('Weekly Summary', 80, 155);
-
-    // Name
-    ctx.fillStyle='#ffffff';
-    ctx.font='bold 80px Arial';
-    ctx.fillText(user.name, 80, 280);
-
-    // Stats grid
-    const stats=[
-      {label:'Workouts',value:gs.weeklyWoCount||0,icon:'💪'},
-      {label:'Week Streak',value:gs.streak,icon:'🔥'},
-      {label:'Weekly XP',value:gs.weeklyPts,icon:'⚡'},
-      {label:'Rank',value:myRank()>0?'#'+myRank():'—',icon:'🏆'},
-    ];
-    stats.forEach((s,i)=>{
-      const col=i%2, row=Math.floor(i/2);
-      const x=80+col*500, y=370+row*220;
-      // Card bg
-      ctx.fillStyle='rgba(255,255,255,0.12)';
-      roundRect(ctx,x,y,440,180,24);ctx.fill();
-      // Icon + value
-      ctx.font='52px Arial';ctx.fillText(s.icon,x+30,y+80);
-      ctx.fillStyle='#ffffff';ctx.font='bold 72px Arial';
-      ctx.fillText(String(s.value),x+30,y+155);
-      ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='32px Arial';
-      ctx.fillText(s.label,x+30,y+195);
-    });
-
-    // Level badge
-    const li=lvlInfo();
-    ctx.fillStyle='rgba(255,255,255,0.15)';
-    roundRect(ctx,80,870,400,80,40);ctx.fill();
-    ctx.fillStyle='#ffffff';ctx.font='bold 34px Arial';
-    ctx.fillText('Level '+li.level+' · '+li.title,110,922);
-
-    // Watermark
-    ctx.fillStyle='rgba(255,255,255,0.35)';
-    ctx.font='28px Arial';ctx.textAlign='right';
-    ctx.fillText('bulkup.netlify.app',1000,1050);
-
-  } else {
-    // FULL PROFILE CARD
-    const grad=ctx.createLinearGradient(0,0,0,1080);
-    grad.addColorStop(0,'#0f172a');grad.addColorStop(1,'#1e293b');
-    ctx.fillStyle=grad;ctx.fillRect(0,0,1080,1080);
-
-    // Accent bar at top
-    const accent=ctx.createLinearGradient(0,0,1080,0);
-    accent.addColorStop(0,'#4f46e5');accent.addColorStop(1,'#22c55e');
-    ctx.fillStyle=accent;ctx.fillRect(0,0,1080,8);
-
-    // App name
-    ctx.fillStyle='rgba(255,255,255,0.5)';
-    ctx.font='bold 36px Arial';ctx.textAlign='left';
-    ctx.fillText('BulkUp 💪', 80, 90);
-
-    // Avatar circle
-    ctx.beginPath();ctx.arc(540,220,100,0,Math.PI*2);
-    ctx.fillStyle='#4f46e5';ctx.fill();
-    ctx.font='80px Arial';ctx.textAlign='center';
-    ctx.fillText(user.avatar||'💪',540,250);
-
-    // Name + level
-    ctx.fillStyle='#ffffff';ctx.font='bold 72px Arial';ctx.textAlign='center';
-    ctx.fillText(user.name,540,370);
-    const li=lvlInfo();
-    ctx.fillStyle='#a5b4fc';ctx.font='38px Arial';
-    ctx.fillText('Level '+li.level+' · '+li.title,540,425);
-
-    // XP bar
-    ctx.fillStyle='rgba(255,255,255,0.1)';
-    roundRect(ctx,120,460,840,24,12);ctx.fill();
-    ctx.fillStyle='#4f46e5';
-    roundRect(ctx,120,460,Math.round(840*li.pct/100),24,12);ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='26px Arial';ctx.textAlign='center';
-    ctx.fillText(gs.xp+' XP · '+li.pct+'% to next level',540,510);
-
-    // Stats
-    const stats=[
-      {l:'Workouts',v:gs.totalWo,c:'#22c55e'},
-      {l:'Streak',v:gs.streak+'wk',c:'#f97316'},
-      {l:'Rank',v:myRank()>0?'#'+myRank():'—',c:'#eab308'},
-      {l:'Habits',v:(gs.habitStreak||0)+'d',c:'#a855f7'},
-    ];
-    stats.forEach((s,i)=>{
-      const x=120+i*210, y=560;
-      ctx.fillStyle='rgba(255,255,255,0.07)';
-      roundRect(ctx,x,y,190,160,18);ctx.fill();
-      ctx.fillStyle=s.c;ctx.font='bold 58px Arial';ctx.textAlign='center';
-      ctx.fillText(String(s.v),x+95,y+90);
-      ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='26px Arial';
-      ctx.fillText(s.l,x+95,y+140);
-    });
-
-    // Achievements row
-    const earned=ACHIEVE.filter(a=>a.u());
-    ctx.fillStyle='rgba(255,255,255,0.06)';
-    roundRect(ctx,80,760,920,120,20);ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='28px Arial';ctx.textAlign='left';
-    ctx.fillText('Achievements: '+earned.length+'/'+ACHIEVE.length,110,810);
-    earned.slice(0,8).forEach((a,i)=>{
-      ctx.font='42px Arial';ctx.fillText(a.i,110+i*95,870);
-    });
-
-    // Weight progress
-    if(weightLog.length>=2){
-      const gained=(weightLog[weightLog.length-1].w-weightLog[0].w).toFixed(1);
-      ctx.fillStyle='#22c55e';ctx.font='bold 38px Arial';ctx.textAlign='center';
-      ctx.fillText((+gained>0?'+':'')+gained+'kg since Day 1 💪',540,960);
-    }
-
-    // Watermark
-    ctx.fillStyle='rgba(255,255,255,0.2)';
-    ctx.font='26px Arial';ctx.textAlign='center';
-    ctx.fillText('bulkup.netlify.app',540,1050);
+    ctx.beginPath();ctx.arc(950,130,220,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.06)';ctx.fill();
+    ctx.beginPath();ctx.arc(100,950,180,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='bold 38px Arial';ctx.textAlign='left';ctx.fillText('BulkUp 💪',80,100);
+    ctx.fillStyle='rgba(255,255,255,0.55)';ctx.font='32px Arial';ctx.fillText('Weekly Summary',80,155);
+    ctx.fillStyle='#ffffff';ctx.font='bold 80px Arial';ctx.fillText(user.name,80,280);
+    var stats=[{label:'Workouts',value:gs.weeklyWoCount||0},{label:'Streak',value:gs.streak+'wk'},{label:'Weekly XP',value:gs.weeklyPts},{label:'Rank',value:myRank()>0?'#'+myRank():'—'}];
+    stats.forEach(function(s,i){var col=i%2,row=Math.floor(i/2),x=80+col*500,y=370+row*220;ctx.fillStyle='rgba(255,255,255,0.12)';roundRect(ctx,x,y,440,180,24);ctx.fill();ctx.fillStyle='#ffffff';ctx.font='bold 72px Arial';ctx.fillText(String(s.value),x+30,y+140);ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='32px Arial';ctx.fillText(s.label,x+30,y+185);});
+    var li=lvlInfo();ctx.fillStyle='rgba(255,255,255,0.15)';roundRect(ctx,80,870,440,80,40);ctx.fill();ctx.fillStyle='#ffffff';ctx.font='bold 34px Arial';ctx.fillText('Level '+li.level+' · '+li.title,110,922);
+    ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font='28px Arial';ctx.textAlign='right';ctx.fillText('getbulkup.netlify.app',1000,1050);
+  }else{
+    var grad2=ctx.createLinearGradient(0,0,0,1080);grad2.addColorStop(0,'#0f172a');grad2.addColorStop(1,'#1e293b');ctx.fillStyle=grad2;ctx.fillRect(0,0,1080,1080);
+    var acc=ctx.createLinearGradient(0,0,1080,0);acc.addColorStop(0,'#4f46e5');acc.addColorStop(1,'#22c55e');ctx.fillStyle=acc;ctx.fillRect(0,0,1080,8);
+    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='bold 36px Arial';ctx.textAlign='left';ctx.fillText('BulkUp 💪',80,90);
+    ctx.beginPath();ctx.arc(540,220,100,0,Math.PI*2);ctx.fillStyle='#4f46e5';ctx.fill();ctx.font='80px Arial';ctx.textAlign='center';ctx.fillText(user.avatar||'💪',540,250);
+    ctx.fillStyle='#ffffff';ctx.font='bold 72px Arial';ctx.fillText(user.name,540,370);
+    var li2=lvlInfo();ctx.fillStyle='#a5b4fc';ctx.font='38px Arial';ctx.fillText('Level '+li2.level+' · '+li2.title,540,425);
+    ctx.fillStyle='rgba(255,255,255,0.1)';roundRect(ctx,120,460,840,24,12);ctx.fill();ctx.fillStyle='#4f46e5';roundRect(ctx,120,460,Math.round(840*li2.pct/100),24,12);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='26px Arial';ctx.fillText(gs.xp+' XP · '+li2.pct+'% to next level',540,510);
+    var stats2=[{l:'Workouts',v:gs.totalWo,c:'#22c55e'},{l:'Streak',v:gs.streak+'wk',c:'#f97316'},{l:'Rank',v:myRank()>0?'#'+myRank():'—',c:'#eab308'},{l:'Habits',v:(gs.habitStreak||0)+'d',c:'#a855f7'}];
+    stats2.forEach(function(s,i){var x=120+i*210,y=560;ctx.fillStyle='rgba(255,255,255,0.07)';roundRect(ctx,x,y,190,160,18);ctx.fill();ctx.fillStyle=s.c;ctx.font='bold 58px Arial';ctx.fillText(String(s.v),x+95,y+90);ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='26px Arial';ctx.fillText(s.l,x+95,y+140);});
+    ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font='26px Arial';ctx.fillText('getbulkup.netlify.app',540,1050);
   }
 
-  // Share / Save — mobile-first (Android blocks silent a.click() downloads)
-  canvas.toBlob(async function(blob){
-    const fileName='bulkup-'+type+'-'+new Date().toLocaleDateString('en-GB').replace(/\//g,'-')+'.png';
-    // 1. Web Share API — opens native Android/iOS share sheet (WhatsApp, Instagram, etc.)
-    if(navigator.share && navigator.canShare){
-      try{
-        const file=new File([blob],fileName,{type:'image/png'});
-        if(navigator.canShare({files:[file]})){
-          await navigator.share({files:[file],title:'BulkUp — My Progress 💪'});
-          showToast('📸 Shared! 🔥');
-          return;
-        }
-      }catch(e){
-        if(e.name==='AbortError')return; // user cancelled
-        console.warn('Share API failed:',e);
-      }
-    }
-    // 2. Fallback: show image in an overlay so user can long-press → Save → share
-    const url=URL.createObjectURL(blob);
-    // Create a fullscreen overlay with the image
-    const overlay=document.createElement('div');
-    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
-    const img=document.createElement('img');
-    img.src=url;img.style.cssText='max-width:100%;max-height:75vh;border-radius:16px;';
-    const tip=document.createElement('div');
-    tip.style.cssText='color:#fff;font-size:14px;font-weight:700;margin-top:16px;text-align:center;line-height:1.6;';
-    tip.textContent='Long-press the image → Save / Share 📲';
-    const closeBtn=document.createElement('button');
-    closeBtn.textContent='✕ Close';
-    closeBtn.style.cssText='margin-top:14px;padding:12px 32px;border:none;border-radius:50px;background:#4f46e5;color:#fff;font-size:15px;font-weight:800;cursor:pointer;';
-    closeBtn.onclick=function(){document.body.removeChild(overlay);URL.revokeObjectURL(url);};
-    overlay.appendChild(img);overlay.appendChild(tip);overlay.appendChild(closeBtn);
-    document.body.appendChild(overlay);
-    showToast('📸 Long-press the image to save & share! 🔥');
-  },'image/png');
+  // Convert to image and show in overlay — guaranteed to work on all Android
+  var dataUrl=canvas.toDataURL('image/png');
+  var overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;';
+  var img=document.createElement('img');
+  img.src=dataUrl;
+  img.style.cssText='max-width:100%;max-height:65vh;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.5);';
+  var tip=document.createElement('div');
+  tip.style.cssText='color:#fff;font-size:13px;font-weight:700;margin-top:14px;text-align:center;line-height:1.7;opacity:0.9;';
+  tip.innerHTML='👆 <b>Long-press the image → Save to Gallery</b><br>Then share to Instagram, WhatsApp, anywhere!';
+  var row=document.createElement('div');
+  row.style.cssText='display:flex;gap:10px;margin-top:14px;width:100%;max-width:360px;';
+  // Share button
+  var shareBtn=document.createElement('button');
+  shareBtn.textContent='📤 Share';
+  shareBtn.style.cssText='flex:1;padding:13px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-size:14px;font-weight:900;cursor:pointer;';
+  shareBtn.onclick=function(){
+    if(navigator.share){
+      fetch(dataUrl).then(function(r){return r.blob();}).then(function(blob){
+        var file=new File([blob],'bulkup-card.png',{type:'image/png'});
+        navigator.share({files:[file],title:'BulkUp Progress 💪'}).catch(function(){});
+      }).catch(function(){showToast('Long-press the image to save it 📸');});
+    }else{showToast('Long-press the image to save it 📸');}
+  };
+  // Close button
+  var closeBtn=document.createElement('button');
+  closeBtn.textContent='✕ Close';
+  closeBtn.style.cssText='flex:1;padding:13px;border:2px solid rgba(255,255,255,0.3);border-radius:14px;background:transparent;color:#fff;font-size:14px;font-weight:700;cursor:pointer;';
+  closeBtn.onclick=function(){document.body.removeChild(overlay);};
+  row.appendChild(shareBtn);row.appendChild(closeBtn);
+  overlay.appendChild(img);overlay.appendChild(tip);overlay.appendChild(row);
+  document.body.appendChild(overlay);
 }
 
 function roundRect(ctx,x,y,w,h,r){
@@ -1344,13 +1238,7 @@ function roundRect(ctx,x,y,w,h,r){
    FEEDBACK
 ═══════════════════════════════════════════════════ */
 window.openFeedback=function(){
-  // window.open is blocked by Android popup blocker - use location.href instead
-  const url='https://forms.gle/sR8nKajRvRbcjR3RA';
-  try{
-    const a=document.createElement('a');
-    a.href=url;a.target='_blank';a.rel='noopener';
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-  }catch(e){ window.location.href=url; }
+  window.location.href='https://forms.gle/sR8nKajRvRbcjR3RA';
 };
 
 // ── Direct window assignments — bulletproof global registration ──────────
