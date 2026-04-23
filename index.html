@@ -1279,20 +1279,57 @@ window.openFeedback=function(){
   window.open('https://forms.gle/sR8nKajRvRbcjR3RA','_blank','noopener');
 };
 
-// ── Direct window assignments — bulletproof global registration ──────────
-// Functions already assigned to window.X above; these lines are a safety net
-// in case any were missed, ensuring onclick="" handlers always find them.
-(function(){
-  var fns = ['showAuthTab','doEmailLogin','doEmailSignup','doGoogleSignIn','doLogout',
-    'switchTab','switchMode','obNext','enterApp','pickOb','toggleTask','togglePlan',
-    'startWorkout','markSet','quickLog','nextExercise','skipRest','finishWorkout',
-    'confirmStop','addXP','genMeal','toggleChip','fpPick','saveFoodProfile','missionTap',
-    'logWeight','saveBS','addPhoto','showToast','switchLbTab','buildAchievements',
-    'shareWeeklyCard','shareProfileCard','enableNotifications','openFeedback',
-    'showShareOptions','showRestDaySetting'];
-  fns.forEach(function(n){ if(typeof window[n]==='undefined') console.warn('BulkUp: window.'+n+' not defined'); });
+// ── FORCE register all functions on window — runs immediately ─────────────
+window.shareWeeklyCard   = function(){generateShareCard('weekly');};
+window.shareProfileCard  = function(){generateShareCard('profile');};
+window.openFeedback      = function(){ window.open('https://forms.gle/sR8nKajRvRbcjR3RA','_blank','noopener'); };
+window.enableNotifications = (function(){
+  return function(){
+    var btn=document.getElementById('notif-btn');
+    var lbl=btn?btn.querySelector('.sl-lbl'):null;
+    var modal=document.createElement('div');
+    modal.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;';
+    modal.innerHTML='<div style="background:#fff;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;margin:0 auto;">'
+      +'<div style="font-family:Nunito,sans-serif;font-size:20px;font-weight:900;margin-bottom:6px;">🔔 Enable Notifications</div>'
+      +'<div id="notif-modal-status" style="background:#f0f4ff;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;color:#1e293b;line-height:1.7;">Tap below to get daily workout reminders.</div>'
+      +'<button id="notif-req-btn" style="width:100%;padding:15px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;">🔔 Enable Now</button>'
+      +'<button id="notif-cls-btn" style="width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">Close</button>'
+      +'</div>';
+    document.body.appendChild(modal);
+    document.getElementById('notif-cls-btn').onclick=function(){document.body.removeChild(modal);};
+    document.getElementById('notif-req-btn').onclick=function(){
+      var s=document.getElementById('notif-modal-status');
+      if(typeof Notification==='undefined'){
+        s.innerHTML='<b style="color:#ef4444">Not supported in this browser.</b><br>Open in Chrome and try again.';
+        return;
+      }
+      if(Notification.permission==='granted'){
+        if(lbl)lbl.textContent='Notifications On ✅';
+        document.body.removeChild(modal);
+        showToast('🔔 Already enabled!');
+        return;
+      }
+      if(Notification.permission==='denied'){
+        s.innerHTML='<b style="color:#ef4444">Blocked.</b> To fix:<br>Chrome ⋮ → Settings → Site Settings → Notifications → Allow getbulkup.netlify.app';
+        return;
+      }
+      Notification.requestPermission().then(function(p){
+        if(p==='granted'){
+          if(lbl)lbl.textContent='Notifications On ✅';
+          if(btn)btn.style.background='#f0fdf4';
+          document.body.removeChild(modal);
+          showToast('🔔 Notifications enabled!');
+          try{new Notification('BulkUp 💪',{body:'Daily reminders are ON! 🔥',icon:'/icon-192.png'});}catch(e){}
+        }else{
+          s.innerHTML='<b style="color:#ef4444">Permission denied.</b><br>Chrome ⋮ → Settings → Site Settings → Notifications → Allow';
+        }
+      }).catch(function(){
+        s.innerHTML='<b style="color:#ef4444">Could not request permission.</b><br>Try from Chrome Settings → Site Settings → Notifications.';
+      });
+    };
+  };
 })();
-// ─────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────
 </script>
 
 <style>
