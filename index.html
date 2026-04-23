@@ -1104,43 +1104,59 @@ function fireNotif(title,body,url){
 window.enableNotifications=function(){
   var btn=g('notif-btn');
   var lbl=btn?btn.querySelector('.sl-lbl'):null;
-  // Show a modal with instructions — works 100% on all Android devices
   var modal=document.createElement('div');
   modal.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;';
   modal.innerHTML='<div style="background:#fff;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;margin:0 auto;">'
     +'<div style="font-family:Nunito,sans-serif;font-size:20px;font-weight:900;margin-bottom:6px;">🔔 Enable Notifications</div>'
-    +'<div style="font-size:13px;color:#64748b;margin-bottom:20px;line-height:1.6;">Get daily workout reminders & streak alerts from BulkUp.</div>'
-    +'<div style="background:#f0f4ff;border-radius:14px;padding:16px;margin-bottom:16px;">'
-    +'<div style="font-size:12px;font-weight:700;color:#4f46e5;margin-bottom:10px;">📱 HOW TO ENABLE ON ANDROID:</div>'
-    +'<div style="font-size:12px;color:#1e293b;line-height:1.8;">'
-    +'1. Tap the <b>⋮ menu</b> (top right of Chrome)<br>'
-    +'2. Go to <b>Settings</b><br>'
-    +'3. Tap <b>Site Settings</b><br>'
-    +'4. Tap <b>Notifications</b><br>'
-    +'5. Find <b>getbulkup.netlify.app</b> → <b>Allow</b>'
-    +'</div></div>'
-    +'<button id="notif-try-btn" style="width:100%;padding:15px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;">🔔 Request Permission Now</button>'
-    +'<button id="notif-close-btn" style="width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">Close</button>'
+    +'<div style="font-size:13px;color:#64748b;margin-bottom:20px;line-height:1.6;">Get daily workout reminders &amp; streak alerts.</div>'
+    +'<div id="notif-status" style="background:#f0f4ff;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;color:#1e293b;line-height:1.7;">Tap the button below to enable push notifications.</div>'
+    +'<button id="notif-req-btn" style="width:100%;padding:15px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;">🔔 Enable Now</button>'
+    +'<button id="notif-cls-btn" style="width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">Close</button>'
     +'</div>';
   document.body.appendChild(modal);
-  document.getElementById('notif-close-btn').onclick=function(){document.body.removeChild(modal);};
-  document.getElementById('notif-try-btn').onclick=function(){
-    if(typeof Notification!=='undefined'&&Notification.permission!=='denied'){
-      Notification.requestPermission().then(function(p){
-        if(p==='granted'){
-          gs.notifsEnabled=true;saveFS();
-          if(lbl)lbl.textContent='Notifications On ✅';
-          if(btn)btn.style.background='var(--gl)';
-          document.body.removeChild(modal);
-          showToast('🔔 Notifications enabled!');
-          try{new Notification('BulkUp 💪',{body:'Daily reminders are on! 🔥',icon:'/icon-192.png'});}catch(e){}
-        }else{
-          showToast('⚠️ Permission denied — follow the steps above');
-        }
-      });
-    }else{
-      showToast('📱 Follow the steps above to enable in browser settings');
+  document.getElementById('notif-cls-btn').onclick=function(){document.body.removeChild(modal);};
+  document.getElementById('notif-req-btn').onclick=function(){
+    var statusEl=document.getElementById('notif-status');
+    var reqBtn=document.getElementById('notif-req-btn');
+    // Check if Notification API exists
+    if(typeof Notification==='undefined'){
+      statusEl.innerHTML='<b style="color:#ef4444;">❌ Not supported</b><br>Your browser does not support push notifications.<br><br>Try opening this site in <b>Chrome</b> and enable notifications from:<br>⋮ Menu → Settings → Site Settings → Notifications → Allow';
+      reqBtn.style.display='none';
+      return;
     }
+    if(Notification.permission==='granted'){
+      gs.notifsEnabled=true;saveFS();
+      if(lbl)lbl.textContent='Notifications On ✅';
+      if(btn)btn.style.background='var(--gl)';
+      document.body.removeChild(modal);
+      showToast('🔔 Notifications already enabled!');
+      return;
+    }
+    if(Notification.permission==='denied'){
+      statusEl.innerHTML='<b style="color:#ef4444;">❌ Blocked by browser</b><br>To fix:<br>1. Tap <b>⋮</b> in Chrome<br>2. Settings → Site Settings<br>3. Notifications → find this site → Allow';
+      reqBtn.style.display='none';
+      return;
+    }
+    reqBtn.disabled=true;reqBtn.textContent='Requesting...';
+    Notification.requestPermission().then(function(permission){
+      if(permission==='granted'){
+        gs.notifsEnabled=true;saveFS();
+        if(lbl)lbl.textContent='Notifications On ✅';
+        if(btn)btn.style.background='var(--gl)';
+        // Fire a welcome notification
+        try{new Notification('BulkUp 💪',{body:'Reminders are ON! Time to get gains 🔥',icon:'/icon-192.png'});}catch(e){}
+        document.body.removeChild(modal);
+        showToast('🔔 Notifications enabled!');
+      }else if(permission==='denied'){
+        statusEl.innerHTML='<b style="color:#ef4444;">❌ Permission denied</b><br>Enable manually:<br>1. Tap <b>⋮</b> in Chrome<br>2. Settings → Site Settings<br>3. Notifications → Allow';
+        reqBtn.style.display='none';
+      }else{
+        reqBtn.disabled=false;reqBtn.textContent='🔔 Enable Now';
+      }
+    }).catch(function(){
+      statusEl.innerHTML='<b style="color:#ef4444;">❌ Could not request permission</b><br>Try enabling from Chrome Settings → Site Settings → Notifications';
+      reqBtn.style.display='none';
+    });
   };
 };
 
@@ -1202,25 +1218,47 @@ function generateShareCard(type){
   tip.innerHTML='👆 <b>Long-press the image → Save to Gallery</b><br>Then share to Instagram, WhatsApp, anywhere!';
   var row=document.createElement('div');
   row.style.cssText='display:flex;gap:10px;margin-top:14px;width:100%;max-width:360px;';
-  // Share button
+  // Native Share button (opens Android share sheet — WhatsApp, Instagram etc)
   var shareBtn=document.createElement('button');
   shareBtn.textContent='📤 Share';
-  shareBtn.style.cssText='flex:1;padding:13px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-size:14px;font-weight:900;cursor:pointer;';
+  shareBtn.style.cssText='flex:1;padding:13px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-size:14px;font-weight:900;cursor:pointer;font-family:Nunito,sans-serif;';
   shareBtn.onclick=function(){
-    if(navigator.share){
-      fetch(dataUrl).then(function(r){return r.blob();}).then(function(blob){
-        var file=new File([blob],'bulkup-card.png',{type:'image/png'});
-        navigator.share({files:[file],title:'BulkUp Progress 💪'}).catch(function(){});
-      }).catch(function(){showToast('Long-press the image to save it 📸');});
-    }else{showToast('Long-press the image to save it 📸');}
+    canvas.toBlob(function(blob){
+      if(!blob){showToast('Long-press image to save 📸');return;}
+      var file=new File([blob],'bulkup-'+type+'.png',{type:'image/png'});
+      if(navigator.share){
+        var canShareFile=navigator.canShare&&navigator.canShare({files:[file]});
+        var p=canShareFile
+          ?navigator.share({files:[file],title:'BulkUp 💪',text:'My BulkUp progress! 💪\ngetbulkup.netlify.app'})
+          :navigator.share({title:'BulkUp 💪',text:'My BulkUp progress! 💪\ngetbulkup.netlify.app'});
+        p.catch(function(e){if(e.name!=='AbortError')showToast('Long-press image to save 📸');});
+      }else{
+        showToast('Long-press image → Save to Gallery 📸');
+      }
+    },'image/png');
   };
   // Close button
   var closeBtn=document.createElement('button');
   closeBtn.textContent='✕ Close';
-  closeBtn.style.cssText='flex:1;padding:13px;border:2px solid rgba(255,255,255,0.3);border-radius:14px;background:transparent;color:#fff;font-size:14px;font-weight:700;cursor:pointer;';
+  closeBtn.style.cssText='flex:1;padding:13px;border:2px solid rgba(255,255,255,0.3);border-radius:14px;background:transparent;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif;';
   closeBtn.onclick=function(){document.body.removeChild(overlay);};
+  // WhatsApp button
+  var waBtn=document.createElement('button');
+  waBtn.textContent='💚 WhatsApp';
+  waBtn.style.cssText='width:100%;max-width:360px;padding:13px;border:none;border-radius:14px;background:#25D366;color:#fff;font-size:14px;font-weight:900;cursor:pointer;font-family:Nunito,sans-serif;margin-top:8px;';
+  waBtn.onclick=function(){
+    var li=lvlInfo();
+    var text=encodeURIComponent('I just hit a new milestone on BulkUp! 💪\n🏋️ Workouts: '+gs.totalWo+'\n🔥 Streak: '+gs.streak+' weeks\n⚡ XP: '+gs.xp+'\n🏅 Level: '+li.level+' ('+li.title+')\nTrain with me 👉 getbulkup.netlify.app');
+    window.open('https://wa.me/?text='+text,'_blank');
+  };
+  // Instagram button
+  var igBtn=document.createElement('button');
+  igBtn.textContent='📸 Save for Instagram';
+  igBtn.style.cssText='width:100%;max-width:360px;padding:13px;border:none;border-radius:14px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-size:14px;font-weight:900;cursor:pointer;font-family:Nunito,sans-serif;margin-top:8px;';
+  igBtn.onclick=function(){showToast('Long-press image above → Save to Gallery → share as Story! 📸');};
   row.appendChild(shareBtn);row.appendChild(closeBtn);
   overlay.appendChild(img);overlay.appendChild(tip);overlay.appendChild(row);
+  overlay.appendChild(waBtn);overlay.appendChild(igBtn);
   document.body.appendChild(overlay);
 }
 
@@ -1235,10 +1273,10 @@ function roundRect(ctx,x,y,w,h,r){
 }
 
 /* ═══════════════════════════════════════════════════
-   FEEDBACK
+   FEEDBACK — opens Google Form
 ═══════════════════════════════════════════════════ */
 window.openFeedback=function(){
-  window.location.href='https://forms.gle/sR8nKajRvRbcjR3RA';
+  window.open('https://forms.gle/sR8nKajRvRbcjR3RA','_blank','noopener');
 };
 
 // ── Direct window assignments — bulletproof global registration ──────────
