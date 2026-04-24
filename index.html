@@ -1104,232 +1104,66 @@ function fireNotif(title,body,url){
 window.enableNotifications=function(){
   var btn=g('notif-btn');
   var lbl=btn?btn.querySelector('.sl-lbl'):null;
-  var modal=document.createElement('div');
-  modal.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;';
-  modal.innerHTML='<div style="background:#fff;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;margin:0 auto;">'
+  var m=document.createElement('div');
+  m.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;';
+  m.innerHTML='<div style="background:#fff;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;margin:0 auto;">'
     +'<div style="font-family:Nunito,sans-serif;font-size:20px;font-weight:900;margin-bottom:6px;">🔔 Enable Notifications</div>'
-    +'<div style="font-size:13px;color:#64748b;margin-bottom:20px;line-height:1.6;">Get daily workout reminders &amp; streak alerts.</div>'
-    +'<div id="notif-status" style="background:#f0f4ff;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;color:#1e293b;line-height:1.7;">Tap the button below to enable push notifications.</div>'
-    +'<button id="notif-req-btn" style="width:100%;padding:15px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;">🔔 Enable Now</button>'
-    +'<button id="notif-cls-btn" style="width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">Close</button>'
+    +'<div id="ns" style="background:#f0f4ff;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;color:#1e293b;line-height:1.7;">Tap below to get daily workout reminders.</div>'
+    +'<button id="nr" style="width:100%;padding:15px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;">🔔 Enable Now</button>'
+    +'<button id="nc" style="width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">Close</button>'
     +'</div>';
-  document.body.appendChild(modal);
-  document.getElementById('notif-cls-btn').onclick=function(){document.body.removeChild(modal);};
-  document.getElementById('notif-req-btn').onclick=function(){
-    var statusEl=document.getElementById('notif-status');
-    var reqBtn=document.getElementById('notif-req-btn');
-    // Check if Notification API exists
-    if(typeof Notification==='undefined'){
-      statusEl.innerHTML='<b style="color:#ef4444;">❌ Not supported</b><br>Your browser does not support push notifications.<br><br>Try opening this site in <b>Chrome</b> and enable notifications from:<br>⋮ Menu → Settings → Site Settings → Notifications → Allow';
-      reqBtn.style.display='none';
-      return;
-    }
-    if(Notification.permission==='granted'){
-      gs.notifsEnabled=true;saveFS();
-      if(lbl)lbl.textContent='Notifications On ✅';
-      if(btn)btn.style.background='var(--gl)';
-      document.body.removeChild(modal);
-      showToast('🔔 Notifications already enabled!');
-      return;
-    }
-    if(Notification.permission==='denied'){
-      statusEl.innerHTML='<b style="color:#ef4444;">❌ Blocked by browser</b><br>To fix:<br>1. Tap <b>⋮</b> in Chrome<br>2. Settings → Site Settings<br>3. Notifications → find this site → Allow';
-      reqBtn.style.display='none';
-      return;
-    }
-    reqBtn.disabled=true;reqBtn.textContent='Requesting...';
-    Notification.requestPermission().then(function(permission){
-      if(permission==='granted'){
-        gs.notifsEnabled=true;saveFS();
-        if(lbl)lbl.textContent='Notifications On ✅';
-        if(btn)btn.style.background='var(--gl)';
-        // Fire a welcome notification
-        try{new Notification('BulkUp 💪',{body:'Reminders are ON! Time to get gains 🔥',icon:'/icon-192.png'});}catch(e){}
-        document.body.removeChild(modal);
-        showToast('🔔 Notifications enabled!');
-      }else if(permission==='denied'){
-        statusEl.innerHTML='<b style="color:#ef4444;">❌ Permission denied</b><br>Enable manually:<br>1. Tap <b>⋮</b> in Chrome<br>2. Settings → Site Settings<br>3. Notifications → Allow';
-        reqBtn.style.display='none';
-      }else{
-        reqBtn.disabled=false;reqBtn.textContent='🔔 Enable Now';
-      }
-    }).catch(function(){
-      statusEl.innerHTML='<b style="color:#ef4444;">❌ Could not request permission</b><br>Try enabling from Chrome Settings → Site Settings → Notifications';
-      reqBtn.style.display='none';
-    });
+  document.body.appendChild(m);
+  document.getElementById('nc').onclick=function(){document.body.removeChild(m);};
+  document.getElementById('nr').onclick=function(){
+    var s=document.getElementById('ns');
+    if(typeof Notification==='undefined'){s.innerHTML='<b style="color:#ef4444">Not supported.</b> Use Chrome browser.';return;}
+    if(Notification.permission==='granted'){if(lbl)lbl.textContent='On ✅';document.body.removeChild(m);showToast('🔔 Already enabled!');return;}
+    if(Notification.permission==='denied'){s.innerHTML='<b style="color:#ef4444">Blocked.</b> Chrome ⋮ → Settings → Site Settings → Notifications → Allow getbulkup.netlify.app';return;}
+    Notification.requestPermission().then(function(p){
+      if(p==='granted'){
+        if(lbl)lbl.textContent='On ✅';if(btn)btn.style.background='#f0fdf4';
+        document.body.removeChild(m);showToast('🔔 Enabled!');
+        try{new Notification('BulkUp 💪',{body:'Reminders ON 🔥',icon:'/icon-192.png'});}catch(e){}
+      }else{s.innerHTML='<b style="color:#ef4444">Denied.</b> Chrome ⋮ → Settings → Site Settings → Notifications → Allow';}
+    }).catch(function(){s.innerHTML='<b style="color:#ef4444">Failed.</b> Go to Chrome Settings → Notifications → Allow.';});
   };
-};
-
-/* ═══════════════════════════════════════════════════
-   SHARE CARD
-   Generates a canvas image the user can save/share
-   Two modes: weekly stats | full profile card
-═══════════════════════════════════════════════════ */
-window.showShareOptions=function(){
-  const el=g('share-options');
-  if(el)el.style.display=el.style.display==='none'?'flex':'none';
 };
 
 window.shareWeeklyCard=function(){generateShareCard('weekly');};
 window.shareProfileCard=function(){generateShareCard('profile');};
 
 function generateShareCard(type){
-  // Draw the card
-  var canvas=document.createElement('canvas');
-  canvas.width=1080;canvas.height=1080;
-  var ctx=canvas.getContext('2d');
-
-  if(type==='weekly'){
-    var grad=ctx.createLinearGradient(0,0,1080,1080);
-    grad.addColorStop(0,'#4f46e5');grad.addColorStop(1,'#7c3aed');
-    ctx.fillStyle=grad;ctx.fillRect(0,0,1080,1080);
-    ctx.beginPath();ctx.arc(950,130,220,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.06)';ctx.fill();
-    ctx.beginPath();ctx.arc(100,950,180,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='bold 38px Arial';ctx.textAlign='left';ctx.fillText('BulkUp 💪',80,100);
-    ctx.fillStyle='rgba(255,255,255,0.55)';ctx.font='32px Arial';ctx.fillText('Weekly Summary',80,155);
-    ctx.fillStyle='#ffffff';ctx.font='bold 80px Arial';ctx.fillText(user.name,80,280);
-    var stats=[{label:'Workouts',value:gs.weeklyWoCount||0},{label:'Streak',value:gs.streak+'wk'},{label:'Weekly XP',value:gs.weeklyPts},{label:'Rank',value:myRank()>0?'#'+myRank():'—'}];
-    stats.forEach(function(s,i){var col=i%2,row=Math.floor(i/2),x=80+col*500,y=370+row*220;ctx.fillStyle='rgba(255,255,255,0.12)';roundRect(ctx,x,y,440,180,24);ctx.fill();ctx.fillStyle='#ffffff';ctx.font='bold 72px Arial';ctx.fillText(String(s.value),x+30,y+140);ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='32px Arial';ctx.fillText(s.label,x+30,y+185);});
-    var li=lvlInfo();ctx.fillStyle='rgba(255,255,255,0.15)';roundRect(ctx,80,870,440,80,40);ctx.fill();ctx.fillStyle='#ffffff';ctx.font='bold 34px Arial';ctx.fillText('Level '+li.level+' · '+li.title,110,922);
-    ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font='28px Arial';ctx.textAlign='right';ctx.fillText('getbulkup.netlify.app',1000,1050);
-  }else{
-    var grad2=ctx.createLinearGradient(0,0,0,1080);grad2.addColorStop(0,'#0f172a');grad2.addColorStop(1,'#1e293b');ctx.fillStyle=grad2;ctx.fillRect(0,0,1080,1080);
-    var acc=ctx.createLinearGradient(0,0,1080,0);acc.addColorStop(0,'#4f46e5');acc.addColorStop(1,'#22c55e');ctx.fillStyle=acc;ctx.fillRect(0,0,1080,8);
-    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='bold 36px Arial';ctx.textAlign='left';ctx.fillText('BulkUp 💪',80,90);
-    ctx.beginPath();ctx.arc(540,220,100,0,Math.PI*2);ctx.fillStyle='#4f46e5';ctx.fill();ctx.font='80px Arial';ctx.textAlign='center';ctx.fillText(user.avatar||'💪',540,250);
-    ctx.fillStyle='#ffffff';ctx.font='bold 72px Arial';ctx.fillText(user.name,540,370);
-    var li2=lvlInfo();ctx.fillStyle='#a5b4fc';ctx.font='38px Arial';ctx.fillText('Level '+li2.level+' · '+li2.title,540,425);
-    ctx.fillStyle='rgba(255,255,255,0.1)';roundRect(ctx,120,460,840,24,12);ctx.fill();ctx.fillStyle='#4f46e5';roundRect(ctx,120,460,Math.round(840*li2.pct/100),24,12);ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='26px Arial';ctx.fillText(gs.xp+' XP · '+li2.pct+'% to next level',540,510);
-    var stats2=[{l:'Workouts',v:gs.totalWo,c:'#22c55e'},{l:'Streak',v:gs.streak+'wk',c:'#f97316'},{l:'Rank',v:myRank()>0?'#'+myRank():'—',c:'#eab308'},{l:'Habits',v:(gs.habitStreak||0)+'d',c:'#a855f7'}];
-    stats2.forEach(function(s,i){var x=120+i*210,y=560;ctx.fillStyle='rgba(255,255,255,0.07)';roundRect(ctx,x,y,190,160,18);ctx.fill();ctx.fillStyle=s.c;ctx.font='bold 58px Arial';ctx.fillText(String(s.v),x+95,y+90);ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='26px Arial';ctx.fillText(s.l,x+95,y+140);});
-    ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font='26px Arial';ctx.fillText('getbulkup.netlify.app',540,1050);
-  }
-
-  // Convert to image and show in overlay — guaranteed to work on all Android
-  var dataUrl=canvas.toDataURL('image/png');
-  var overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;';
-  var img=document.createElement('img');
-  img.src=dataUrl;
-  img.style.cssText='max-width:100%;max-height:65vh;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.5);';
-  var tip=document.createElement('div');
-  tip.style.cssText='color:#fff;font-size:13px;font-weight:700;margin-top:14px;text-align:center;line-height:1.7;opacity:0.9;';
-  tip.innerHTML='👆 <b>Long-press the image → Save to Gallery</b><br>Then share to Instagram, WhatsApp, anywhere!';
-  var row=document.createElement('div');
-  row.style.cssText='display:flex;gap:10px;margin-top:14px;width:100%;max-width:360px;';
-  // Native Share button (opens Android share sheet — WhatsApp, Instagram etc)
-  var shareBtn=document.createElement('button');
-  shareBtn.textContent='📤 Share';
-  shareBtn.style.cssText='flex:1;padding:13px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-size:14px;font-weight:900;cursor:pointer;font-family:Nunito,sans-serif;';
-  shareBtn.onclick=function(){
-    canvas.toBlob(function(blob){
-      if(!blob){showToast('Long-press image to save 📸');return;}
-      var file=new File([blob],'bulkup-'+type+'.png',{type:'image/png'});
-      if(navigator.share){
-        var canShareFile=navigator.canShare&&navigator.canShare({files:[file]});
-        var p=canShareFile
-          ?navigator.share({files:[file],title:'BulkUp 💪',text:'My BulkUp progress! 💪\ngetbulkup.netlify.app'})
-          :navigator.share({title:'BulkUp 💪',text:'My BulkUp progress! 💪\ngetbulkup.netlify.app'});
-        p.catch(function(e){if(e.name!=='AbortError')showToast('Long-press image to save 📸');});
-      }else{
-        showToast('Long-press image → Save to Gallery 📸');
-      }
-    },'image/png');
-  };
-  // Close button
-  var closeBtn=document.createElement('button');
-  closeBtn.textContent='✕ Close';
-  closeBtn.style.cssText='flex:1;padding:13px;border:2px solid rgba(255,255,255,0.3);border-radius:14px;background:transparent;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif;';
-  closeBtn.onclick=function(){document.body.removeChild(overlay);};
-  // WhatsApp button
-  var waBtn=document.createElement('button');
-  waBtn.textContent='💚 WhatsApp';
-  waBtn.style.cssText='width:100%;max-width:360px;padding:13px;border:none;border-radius:14px;background:#25D366;color:#fff;font-size:14px;font-weight:900;cursor:pointer;font-family:Nunito,sans-serif;margin-top:8px;';
-  waBtn.onclick=function(){
-    var li=lvlInfo();
-    var text=encodeURIComponent('I just hit a new milestone on BulkUp! 💪\n🏋️ Workouts: '+gs.totalWo+'\n🔥 Streak: '+gs.streak+' weeks\n⚡ XP: '+gs.xp+'\n🏅 Level: '+li.level+' ('+li.title+')\nTrain with me 👉 getbulkup.netlify.app');
-    window.open('https://wa.me/?text='+text,'_blank');
-  };
-  // Instagram button
-  var igBtn=document.createElement('button');
-  igBtn.textContent='📸 Save for Instagram';
-  igBtn.style.cssText='width:100%;max-width:360px;padding:13px;border:none;border-radius:14px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-size:14px;font-weight:900;cursor:pointer;font-family:Nunito,sans-serif;margin-top:8px;';
-  igBtn.onclick=function(){showToast('Long-press image above → Save to Gallery → share as Story! 📸');};
-  row.appendChild(shareBtn);row.appendChild(closeBtn);
-  overlay.appendChild(img);overlay.appendChild(tip);overlay.appendChild(row);
-  overlay.appendChild(waBtn);overlay.appendChild(igBtn);
-  document.body.appendChild(overlay);
+  var li=lvlInfo();
+  var shareText=type==='weekly'
+    ?'\u{1F4AA} My BulkUp Weekly Stats!\n\u{1F3CB}\uFE0F Workouts: '+(gs.weeklyWoCount||0)+'\n\u{1F525} Streak: '+gs.streak+' weeks\n\u26A1 XP: '+gs.weeklyPts+'\n\u{1F3C6} Rank: '+(myRank()>0?'#'+myRank():'\u2014')+'\nTrain with me \u{1F449} getbulkup.netlify.app'
+    :'\u{1F4AA} My BulkUp Profile!\n\u{1F464} '+user.name+'\n\u{1F3C5} Level '+li.level+' \u00B7 '+li.title+'\n\u{1F3CB}\uFE0F '+gs.totalWo+' Workouts\n\u{1F525} '+gs.streak+' Week Streak\n\u26A1 '+gs.xp+' XP\nTrain with me \u{1F449} getbulkup.netlify.app';
+  if(navigator.share){
+    navigator.share({title:'BulkUp',text:shareText})
+      .then(function(){showToast('Shared! \uD83D\uDD25');})
+      .catch(function(e){if(e.name!=='AbortError')showShareModal(shareText);});
+  }else{showShareModal(shareText);}
 }
 
-function roundRect(ctx,x,y,w,h,r){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
-  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
-  ctx.closePath();
+function showShareModal(shareText){
+  var waText=encodeURIComponent(shareText);
+  var m=document.createElement('div');
+  m.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;';
+  m.innerHTML='<div style="background:#1e293b;border-radius:20px;padding:24px;width:100%;max-width:360px;">'
+    +'<div style="color:#fff;font-family:Nunito,sans-serif;font-size:18px;font-weight:900;margin-bottom:12px;">Share Your Progress</div>'
+    +'<a href="https://wa.me/?text='+waText+'" target="_blank" rel="noopener" style="display:block;width:100%;padding:14px;border-radius:14px;background:#25D366;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:10px;">Share on WhatsApp</a>'
+    +'<button id="shr-copy" style="width:100%;padding:14px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;">Copy Text</button>'
+    +'<button id="shr-cls" style="width:100%;padding:13px;border:2px solid rgba(255,255,255,0.2);border-radius:14px;background:transparent;color:#fff;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">Close</button>'
+    +'</div>';
+  document.body.appendChild(m);
+  document.getElementById('shr-cls').onclick=function(){document.body.removeChild(m);};
+  document.getElementById('shr-copy').onclick=function(){
+    if(navigator.clipboard){navigator.clipboard.writeText(shareText).then(function(){showToast('Copied!');});}
+    else{showToast('Select and copy the text manually');}
+  };
 }
 
-/* ═══════════════════════════════════════════════════
-   FEEDBACK — opens Google Form
-═══════════════════════════════════════════════════ */
-window.openFeedback=function(){
-  window.open('https://forms.gle/sR8nKajRvRbcjR3RA','_blank','noopener');
-};
+window.openFeedback=function(){window.location.href='https://forms.gle/sR8nKajRvRbcjR3RA';};
 
-// ── FORCE register all functions on window — runs immediately ─────────────
-window.shareWeeklyCard   = function(){generateShareCard('weekly');};
-window.shareProfileCard  = function(){generateShareCard('profile');};
-window.openFeedback      = function(){ window.open('https://forms.gle/sR8nKajRvRbcjR3RA','_blank','noopener'); };
-window.enableNotifications = (function(){
-  return function(){
-    var btn=document.getElementById('notif-btn');
-    var lbl=btn?btn.querySelector('.sl-lbl'):null;
-    var modal=document.createElement('div');
-    modal.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;';
-    modal.innerHTML='<div style="background:#fff;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;margin:0 auto;">'
-      +'<div style="font-family:Nunito,sans-serif;font-size:20px;font-weight:900;margin-bottom:6px;">🔔 Enable Notifications</div>'
-      +'<div id="notif-modal-status" style="background:#f0f4ff;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;color:#1e293b;line-height:1.7;">Tap below to get daily workout reminders.</div>'
-      +'<button id="notif-req-btn" style="width:100%;padding:15px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;">🔔 Enable Now</button>'
-      +'<button id="notif-cls-btn" style="width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">Close</button>'
-      +'</div>';
-    document.body.appendChild(modal);
-    document.getElementById('notif-cls-btn').onclick=function(){document.body.removeChild(modal);};
-    document.getElementById('notif-req-btn').onclick=function(){
-      var s=document.getElementById('notif-modal-status');
-      if(typeof Notification==='undefined'){
-        s.innerHTML='<b style="color:#ef4444">Not supported in this browser.</b><br>Open in Chrome and try again.';
-        return;
-      }
-      if(Notification.permission==='granted'){
-        if(lbl)lbl.textContent='Notifications On ✅';
-        document.body.removeChild(modal);
-        showToast('🔔 Already enabled!');
-        return;
-      }
-      if(Notification.permission==='denied'){
-        s.innerHTML='<b style="color:#ef4444">Blocked.</b> To fix:<br>Chrome ⋮ → Settings → Site Settings → Notifications → Allow getbulkup.netlify.app';
-        return;
-      }
-      Notification.requestPermission().then(function(p){
-        if(p==='granted'){
-          if(lbl)lbl.textContent='Notifications On ✅';
-          if(btn)btn.style.background='#f0fdf4';
-          document.body.removeChild(modal);
-          showToast('🔔 Notifications enabled!');
-          try{new Notification('BulkUp 💪',{body:'Daily reminders are ON! 🔥',icon:'/icon-192.png'});}catch(e){}
-        }else{
-          s.innerHTML='<b style="color:#ef4444">Permission denied.</b><br>Chrome ⋮ → Settings → Site Settings → Notifications → Allow';
-        }
-      }).catch(function(){
-        s.innerHTML='<b style="color:#ef4444">Could not request permission.</b><br>Try from Chrome Settings → Site Settings → Notifications.';
-      });
-    };
-  };
-})();
-// ──────────────────────────────────────────────────────────────────────────
 </script>
 
 <style>
@@ -1990,7 +1824,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
         <div class="sl-item" onclick="switchTab('progress')"><div class="sl-icon" style="background:var(--gl);">📈</div><div class="sl-lbl">View Progress</div><div class="sl-arrow">›</div></div>
         <div class="sl-item" onclick="switchTab('leaderboard')"><div class="sl-icon" style="background:var(--yl);">🏆</div><div class="sl-lbl">Live Leaderboard</div><div class="sl-arrow">›</div></div>
         <div class="sl-item" id="notif-btn" onclick="enableNotifications()" style="cursor:pointer;"><div class="sl-icon" style="background:var(--pl);">🔔</div><div class="sl-lbl">Enable Notifications</div><div class="sl-arrow">›</div></div>
-        <div class="sl-item" onclick="openFeedback()"><div class="sl-icon" style="background:#dcfce7;">💬</div><div class="sl-lbl">Send Feedback</div><div class="sl-arrow">›</div></div>
+        <a href="https://forms.gle/sR8nKajRvRbcjR3RA" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;"><div class="sl-item"><div class="sl-icon" style="background:#dcfce7;">💬</div><div class="sl-lbl">Send Feedback</div><div class="sl-arrow">›</div></div></a>
         <div class="sl-item" onclick="doLogout()"><div class="sl-icon" style="background:var(--rl);">🚪</div><div class="sl-lbl" style="color:var(--red);">Sign Out</div><div class="sl-arrow">›</div></div>
       </div>
       <div style="height:80px;"></div>
