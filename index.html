@@ -1135,8 +1135,8 @@ window.shareProfileCard=function(){generateShareCard('profile');};
 function generateShareCard(type){
   var li=lvlInfo();
   var shareText=type==='weekly'
-    ?'\u{1F4AA} My BulkUp Weekly Stats!\n\u{1F3CB}\uFE0F Workouts: '+(gs.weeklyWoCount||0)+'\n\u{1F525} Streak: '+gs.streak+' weeks\n\u26A1 XP: '+gs.weeklyPts+'\n\u{1F3C6} Rank: '+(myRank()>0?'#'+myRank():'\u2014')+'\nTrain with me \u{1F449} getbulkup.netlify.app'
-    :'\u{1F4AA} My BulkUp Profile!\n\u{1F464} '+user.name+'\n\u{1F3C5} Level '+li.level+' \u00B7 '+li.title+'\n\u{1F3CB}\uFE0F '+gs.totalWo+' Workouts\n\u{1F525} '+gs.streak+' Week Streak\n\u26A1 '+gs.xp+' XP\nTrain with me \u{1F449} getbulkup.netlify.app';
+    ?'My BulkUp Weekly Stats! '+String.fromCodePoint(0x1F4AA)+'\nWorkouts: '+(gs.weeklyWoCount||0)+'\nStreak: '+gs.streak+' weeks\nXP: '+gs.weeklyPts+'\nRank: '+(myRank()>0?'#'+myRank():'-')+'\nTrain with me: getbulkup.netlify.app'
+    :'My BulkUp Profile! '+String.fromCodePoint(0x1F4AA)+'\n'+user.name+'\nLevel '+li.level+' - '+li.title+'\nWorkouts: '+gs.totalWo+'\nStreak: '+gs.streak+' weeks\nXP: '+gs.xp+'\nTrain with me: getbulkup.netlify.app';
   if(navigator.share){
     navigator.share({title:'BulkUp',text:shareText})
       .then(function(){showToast('Shared! \uD83D\uDD25');})
