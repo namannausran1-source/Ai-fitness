@@ -1214,6 +1214,19 @@ function showShareModal(shareText){
 
 window.openFeedback=function(){window.location.href='https://forms.gle/sR8nKajRvRbcjR3RA';};
 
+
+// Polyfill ctx.roundRect for older Android Chrome
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.beginPath();
+    this.moveTo(x+r,y);this.lineTo(x+w-r,y);this.quadraticCurveTo(x+w,y,x+w,y+r);
+    this.lineTo(x+w,y+h-r);this.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    this.lineTo(x+r,y+h);this.quadraticCurveTo(x,y+h,x,y+h-r);
+    this.lineTo(x,y+r);this.quadraticCurveTo(x,y,x+r,y);
+    this.closePath();return this;
+  };
+}
 window.generateAndShare=function(type){
   var li=lvlInfo();
   // Build canvas card
@@ -1372,28 +1385,8 @@ Join: getbulkup.netlify.app');
 };
 
 
-// Update share links with real user stats
-document.addEventListener('DOMContentLoaded', function(){
-  setTimeout(function(){
-    var weekly = document.getElementById('wa-weekly-btn');
-    var profile = document.getElementById('wa-profile-btn');
-    if(weekly && typeof gs !== 'undefined' && typeof user !== 'undefined'){
-      var li = lvlInfo();
-      var weeklyTxt = 'My BulkUp Weekly Stats!\nWorkouts: '+(gs.weeklyWoCount||0)+'\nStreak: '+gs.streak+' weeks\nXP: '+gs.weeklyPts+'\nJoin me: getbulkup.netlify.app';
-      var profileTxt = 'My BulkUp Profile!\n'+user.name+'\nLevel '+li.level+' - '+li.title+'\nWorkouts: '+gs.totalWo+'\nXP: '+gs.xp+'\nJoin me: getbulkup.netlify.app';
-      weekly.href = 'https://wa.me/?text='+encodeURIComponent(weeklyTxt);
-      profile.href = 'https://wa.me/?text='+encodeURIComponent(profileTxt);
-    }
-  }, 2000);
-});
 
-// BACKUP: Re-register functions on DOMContentLoaded
-document.addEventListener('DOMContentLoaded', function(){
-  document.querySelectorAll('[onclick]').forEach(function(el){
-    var fn = el.getAttribute('onclick').replace('()','').replace('(','').split('(')[0].trim();
-    if(window[fn]) el.addEventListener('click', function(e){ e.stopPropagation(); window[fn](); });
-  });
-});
+
 </script>
 
 <style>
