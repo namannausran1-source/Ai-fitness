@@ -1104,61 +1104,111 @@ function fireNotif(title,body,url){
 window.enableNotifications=function(){
   var btn=g('notif-btn');
   var lbl=btn?btn.querySelector('.sl-lbl'):null;
+  // Show modal immediately — guaranteed visible
   var m=document.createElement('div');
-  m.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;';
-  m.innerHTML='<div style="background:#fff;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;margin:0 auto;">'
-    +'<div style="font-family:Nunito,sans-serif;font-size:20px;font-weight:900;margin-bottom:6px;">🔔 Enable Notifications</div>'
-    +'<div id="ns" style="background:#f0f4ff;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;color:#1e293b;line-height:1.7;">Tap below to get daily workout reminders.</div>'
-    +'<button id="nr" style="width:100%;padding:15px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;">🔔 Enable Now</button>'
-    +'<button id="nc" style="width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">Close</button>'
-    +'</div>';
+  m.id='notif-modal';
+  m.style.cssText='position:fixed;left:0;right:0;bottom:0;top:0;z-index:99999;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;justify-content:center;';
+  var inner=document.createElement('div');
+  inner.style.cssText='background:#fff;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;';
+  inner.innerHTML='<div style="font-family:Nunito,sans-serif;font-size:20px;font-weight:900;margin-bottom:6px;">Enable Notifications</div>'
+    +'<div id="ns" style="background:#f0f4ff;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;color:#1e293b;line-height:1.8;">Get daily reminders to stay consistent!</div>'
+    +'<button id="nr" style="display:block;width:100%;padding:15px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;box-sizing:border-box;">Enable Now</button>'
+    +'<button id="nc" style="display:block;width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-sizing:border-box;">Close</button>';
+  m.appendChild(inner);
   document.body.appendChild(m);
-  document.getElementById('nc').onclick=function(){document.body.removeChild(m);};
+  document.getElementById('nc').onclick=function(){
+    var el=document.getElementById('notif-modal');
+    if(el)document.body.removeChild(el);
+  };
   document.getElementById('nr').onclick=function(){
     var s=document.getElementById('ns');
-    if(typeof Notification==='undefined'){s.innerHTML='<b style="color:#ef4444">Not supported.</b> Use Chrome browser.';return;}
-    if(Notification.permission==='granted'){if(lbl)lbl.textContent='On ✅';document.body.removeChild(m);showToast('🔔 Already enabled!');return;}
-    if(Notification.permission==='denied'){s.innerHTML='<b style="color:#ef4444">Blocked.</b> Chrome ⋮ → Settings → Site Settings → Notifications → Allow getbulkup.netlify.app';return;}
+    var el=document.getElementById('notif-modal');
+    if(typeof Notification==='undefined'){
+      s.textContent='Not supported in this browser. Try Chrome.';
+      s.style.color='#ef4444';
+      return;
+    }
+    if(Notification.permission==='granted'){
+      if(lbl)lbl.textContent='On';
+      if(el)document.body.removeChild(el);
+      showToast('Notifications already enabled!');
+      return;
+    }
+    if(Notification.permission==='denied'){
+      s.innerHTML='Blocked by browser.<br>Fix: Chrome menu (3 dots) > Settings > Site Settings > Notifications > find getbulkup.netlify.app > Allow';
+      s.style.color='#ef4444';
+      return;
+    }
     Notification.requestPermission().then(function(p){
       if(p==='granted'){
-        if(lbl)lbl.textContent='On ✅';if(btn)btn.style.background='#f0fdf4';
-        document.body.removeChild(m);showToast('🔔 Enabled!');
-        try{new Notification('BulkUp 💪',{body:'Reminders ON 🔥',icon:'/icon-192.png'});}catch(e){}
-      }else{s.innerHTML='<b style="color:#ef4444">Denied.</b> Chrome ⋮ → Settings → Site Settings → Notifications → Allow';}
-    }).catch(function(){s.innerHTML='<b style="color:#ef4444">Failed.</b> Go to Chrome Settings → Notifications → Allow.';});
+        if(lbl)lbl.textContent='On';
+        if(btn)btn.style.background='#f0fdf4';
+        if(el)document.body.removeChild(el);
+        showToast('Notifications enabled!');
+      }else{
+        s.textContent='Permission denied. Go to Chrome Settings > Site Settings > Notifications > Allow.';
+        s.style.color='#ef4444';
+      }
+    });
   };
 };
 
-window.shareWeeklyCard=function(){generateShareCard('weekly');};
-window.shareProfileCard=function(){generateShareCard('profile');};
-
-function generateShareCard(type){
+window.shareWeeklyCard=function(){
   var li=lvlInfo();
-  var shareText=type==='weekly'
-    ?'My BulkUp Weekly Stats! '+String.fromCodePoint(0x1F4AA)+'\nWorkouts: '+(gs.weeklyWoCount||0)+'\nStreak: '+gs.streak+' weeks\nXP: '+gs.weeklyPts+'\nRank: '+(myRank()>0?'#'+myRank():'-')+'\nTrain with me: getbulkup.netlify.app'
-    :'My BulkUp Profile! '+String.fromCodePoint(0x1F4AA)+'\n'+user.name+'\nLevel '+li.level+' - '+li.title+'\nWorkouts: '+gs.totalWo+'\nStreak: '+gs.streak+' weeks\nXP: '+gs.xp+'\nTrain with me: getbulkup.netlify.app';
-  if(navigator.share){
-    navigator.share({title:'BulkUp',text:shareText})
-      .then(function(){showToast('Shared! \uD83D\uDD25');})
-      .catch(function(e){if(e.name!=='AbortError')showShareModal(shareText);});
-  }else{showShareModal(shareText);}
-}
+  var txt='My BulkUp Weekly Stats!'
+    +'\nWorkouts this week: '+(gs.weeklyWoCount||0)
+    +'\nStreak: '+gs.streak+' weeks'
+    +'\nXP earned: '+gs.weeklyPts
+    +'\nRank: '+(myRank()>0?'#'+myRank():'-')
+    +'\nJoin me: getbulkup.netlify.app';
+  showShareModal(txt);
+};
+
+window.shareProfileCard=function(){
+  var li=lvlInfo();
+  var txt='My BulkUp Profile!'
+    +'\nName: '+user.name
+    +'\nLevel: '+li.level+' ('+li.title+')'
+    +'\nTotal Workouts: '+gs.totalWo
+    +'\nStreak: '+gs.streak+' weeks'
+    +'\nXP: '+gs.xp
+    +'\nJoin me: getbulkup.netlify.app';
+  showShareModal(txt);
+};
 
 function showShareModal(shareText){
   var waText=encodeURIComponent(shareText);
   var m=document.createElement('div');
-  m.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;';
-  m.innerHTML='<div style="background:#1e293b;border-radius:20px;padding:24px;width:100%;max-width:360px;">'
-    +'<div style="color:#fff;font-family:Nunito,sans-serif;font-size:18px;font-weight:900;margin-bottom:12px;">Share Your Progress</div>'
-    +'<a href="https://wa.me/?text='+waText+'" target="_blank" rel="noopener" style="display:block;width:100%;padding:14px;border-radius:14px;background:#25D366;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:10px;">Share on WhatsApp</a>'
-    +'<button id="shr-copy" style="width:100%;padding:14px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;">Copy Text</button>'
-    +'<button id="shr-cls" style="width:100%;padding:13px;border:2px solid rgba(255,255,255,0.2);border-radius:14px;background:transparent;color:#fff;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">Close</button>'
-    +'</div>';
+  m.id='share-modal';
+  m.style.cssText='position:fixed;left:0;right:0;bottom:0;top:0;z-index:99999;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
+  var inner=document.createElement('div');
+  inner.style.cssText='background:#1e293b;border-radius:20px;padding:24px;width:100%;max-width:360px;box-sizing:border-box;';
+  inner.innerHTML='<div style="color:#fff;font-family:Nunito,sans-serif;font-size:18px;font-weight:900;margin-bottom:12px;">Share Your Progress</div>'
+    +'<div style="color:#94a3b8;font-size:12px;margin-bottom:16px;white-space:pre-wrap;line-height:1.6;background:#0f172a;padding:12px;border-radius:10px;word-break:break-word;">'+shareText+'</div>'
+    +'<a id="wa-link" href="https://wa.me/?text='+waText+'" target="_blank" rel="noopener noreferrer" style="display:block;width:100%;padding:14px;border-radius:14px;background:#25D366;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:10px;">Share on WhatsApp</a>'
+    +'<button id="shr-copy" style="display:block;width:100%;padding:14px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;box-sizing:border-box;">Copy Text</button>'
+    +'<button id="shr-cls" style="display:block;width:100%;padding:13px;border:2px solid rgba(255,255,255,0.2);border-radius:14px;background:transparent;color:#fff;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-sizing:border-box;">Close</button>';
+  m.appendChild(inner);
   document.body.appendChild(m);
-  document.getElementById('shr-cls').onclick=function(){document.body.removeChild(m);};
+  document.getElementById('shr-cls').onclick=function(){
+    var el=document.getElementById('share-modal');
+    if(el)document.body.removeChild(el);
+  };
   document.getElementById('shr-copy').onclick=function(){
-    if(navigator.clipboard){navigator.clipboard.writeText(shareText).then(function(){showToast('Copied!');});}
-    else{showToast('Select and copy the text manually');}
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(shareText).then(function(){showToast('Copied! Paste anywhere.');});
+      }else{
+        var ta=document.createElement('textarea');
+        ta.value=shareText;
+        ta.style.cssText='position:fixed;top:0;left:0;opacity:0;';
+        document.body.appendChild(ta);
+        ta.focus();ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Copied!');
+      }
+    }catch(e){showToast('Tap and hold text to copy manually');}
   };
 }
 
