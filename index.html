@@ -1102,6 +1102,7 @@ function fireNotif(title,body,url){
 }
 
 window.enableNotifications=function(){
+  alert("enableNotifications called!");
   var btn=g('notif-btn');
   var lbl=btn?btn.querySelector('.sl-lbl'):null;
   // Show modal immediately — guaranteed visible
@@ -1154,6 +1155,7 @@ window.enableNotifications=function(){
 };
 
 window.shareWeeklyCard=function(){
+  alert("shareWeeklyCard called!");
   var li=lvlInfo();
   var txt='My BulkUp Weekly Stats!'
     +'\nWorkouts this week: '+(gs.weeklyWoCount||0)
