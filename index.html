@@ -1225,7 +1225,7 @@ window.openFeedback=function(){window.location.href='https://forms.gle/sR8nKajRv
 html,body{height:100%;overscroll-behavior:none;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;display:flex;justify-content:center;overflow:hidden;}
 .app{width:100%;max-width:430px;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:var(--bg);overflow:hidden;}
-.page{position:absolute;inset:0;display:none;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}.page *{pointer-events:none;}.page.active *{pointer-events:all;}
+.page{position:absolute;inset:0;display:none;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}
 .page.active{display:flex;opacity:1;pointer-events:all;transform:translateY(0);z-index:10;}
 .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:20px;}
 .scroll::-webkit-scrollbar{display:none;}
@@ -1559,7 +1559,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 <div class="toast" id="toast"></div>
 
 <!-- REST OVERLAY -->
-<div class="overlay rest-overlay" id="restOverlay" style="z-index:1200;position:fixed;inset:0;">
+<div class="overlay rest-overlay" id="restOverlay" style="z-index:1200;position:fixed;inset:0;display:none;">
   <div class="rest-circle"><div class="rest-num" id="restNum">30</div><div style="font-size:10px;color:var(--muted);">sec</div></div>
   <div style="font-family:'Nunito',sans-serif;font-size:20px;font-weight:900;margin-bottom:7px;">Rest Up 🌬️</div>
   <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:20px;text-align:center;">Recovery is when muscles grow.</div>
@@ -1567,7 +1567,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 </div>
 
 <!-- COMPLETE OVERLAY -->
-<div class="overlay complete-overlay" id="completeOverlay" style="z-index:1200;position:fixed;inset:0;">
+<div class="overlay complete-overlay" id="completeOverlay" style="z-index:1200;position:fixed;inset:0;display:none;">
   <div style="font-size:64px;margin-bottom:12px;">🏆</div>
   <div style="font-family:'Nunito',sans-serif;font-size:26px;font-weight:900;color:var(--pd);margin-bottom:5px;">You Crushed It!</div>
   <div style="font-size:13px;color:var(--muted);margin-bottom:20px;" id="comp-sub">Workout done.</div>
@@ -1665,7 +1665,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 </div>
 
 <!-- MAIN APP -->
-<div class="page" id="page-app" style="padding-bottom:90px;pointer-events:all;">
+<div class="page" id="page-app" style="padding-bottom:90px;">
 
   <!-- HOME -->
   <div id="sc-home" style="display:flex;flex-direction:column;flex:1;min-height:0;">
@@ -1730,7 +1730,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       <div style="font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;margin-bottom:9px;">🕐 Recent</div>
       <div id="recent-list"></div>
     </div>
-    <div class="overlay wo-overlay" id="wo-overlay" style="z-index:1100;position:fixed;inset:0;">
+    <div class="overlay wo-overlay" id="wo-overlay" style="z-index:1100;position:fixed;inset:0;display:none;">
       <div class="wo-top"><div><div class="wo-title-text" id="wo-ol-title">Workout</div></div><div class="wo-timer" id="wo-timer">0:00</div></div>
       <div class="wo-prog-bar"><div class="wo-prog-fill" id="wo-prog" style="width:0%"></div></div>
       <div class="wo-body">
@@ -1865,15 +1865,15 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
         <div class="card-title" style="margin-bottom:10px;">📤 Share Your Progress</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:11px;">Generate a card to share on Instagram or WhatsApp</div>
         <div style="display:flex;gap:8px;">
-          <button onclick="shareWeeklyCard()" style="flex:1;padding:12px 8px;border:none;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;">📊 Weekly Stats</button>
-          <button onclick="shareProfileCard()" style="flex:1;padding:12px 8px;border:none;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;">🏆 Full Profile</button>
+          <button onclick="shareWeeklyCard()" style="flex:1;padding:12px 8px;border:none;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;pointer-events:all;position:relative;z-index:10;">📊 Weekly Stats</button>
+          <button onclick="shareProfileCard()" style="flex:1;padding:12px 8px;border:none;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;pointer-events:all;position:relative;z-index:10;">🏆 Full Profile</button>
         </div>
       </div>
 
       <div class="settings-list">
         <div class="sl-item" onclick="switchTab('progress')"><div class="sl-icon" style="background:var(--gl);">📈</div><div class="sl-lbl">View Progress</div><div class="sl-arrow">›</div></div>
         <div class="sl-item" onclick="switchTab('leaderboard')"><div class="sl-icon" style="background:var(--yl);">🏆</div><div class="sl-lbl">Live Leaderboard</div><div class="sl-arrow">›</div></div>
-        <div class="sl-item" id="notif-btn" onclick="enableNotifications()" style="cursor:pointer;"><div class="sl-icon" style="background:var(--pl);">🔔</div><div class="sl-lbl">Enable Notifications</div><div class="sl-arrow">›</div></div>
+        <div class="sl-item" id="notif-btn" onclick="enableNotifications()" style="cursor:pointer;pointer-events:all;position:relative;z-index:10;"><div class="sl-icon" style="background:var(--pl);">🔔</div><div class="sl-lbl">Enable Notifications</div><div class="sl-arrow">›</div></div>
         <a href="https://forms.gle/sR8nKajRvRbcjR3RA" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;"><div class="sl-item"><div class="sl-icon" style="background:#dcfce7;">💬</div><div class="sl-lbl">Send Feedback</div><div class="sl-arrow">›</div></div></a>
         <div class="sl-item" onclick="doLogout()"><div class="sl-icon" style="background:var(--rl);">🚪</div><div class="sl-lbl" style="color:var(--red);">Sign Out</div><div class="sl-arrow">›</div></div>
       </div>
