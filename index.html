@@ -1102,7 +1102,6 @@ function fireNotif(title,body,url){
 }
 
 window.enableNotifications=function(){
-  alert("enableNotifications called!");
   var btn=g('notif-btn');
   var lbl=btn?btn.querySelector('.sl-lbl'):null;
   // Show modal immediately — guaranteed visible
@@ -1155,7 +1154,6 @@ window.enableNotifications=function(){
 };
 
 window.shareWeeklyCard=function(){
-  alert("shareWeeklyCard called!");
   var li=lvlInfo();
   var txt='My BulkUp Weekly Stats!'
     +'\nWorkouts this week: '+(gs.weeklyWoCount||0)
@@ -1227,7 +1225,7 @@ window.openFeedback=function(){window.location.href='https://forms.gle/sR8nKajRv
 html,body{height:100%;overscroll-behavior:none;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;display:flex;justify-content:center;overflow:hidden;}
 .app{width:100%;max-width:430px;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:var(--bg);overflow:hidden;}
-.page{position:absolute;inset:0;display:none;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}
+.page{position:absolute;inset:0;display:none;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}.page *{pointer-events:none;}.page.active *{pointer-events:all;}
 .page.active{display:flex;opacity:1;pointer-events:all;transform:translateY(0);z-index:10;}
 .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:20px;}
 .scroll::-webkit-scrollbar{display:none;}
@@ -1667,7 +1665,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 </div>
 
 <!-- MAIN APP -->
-<div class="page" id="page-app" style="padding-bottom:90px;">
+<div class="page" id="page-app" style="padding-bottom:90px;pointer-events:all;">
 
   <!-- HOME -->
   <div id="sc-home" style="display:flex;flex-direction:column;flex:1;min-height:0;">
