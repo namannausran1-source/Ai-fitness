@@ -1214,6 +1214,29 @@ function showShareModal(shareText){
 
 window.openFeedback=function(){window.location.href='https://forms.gle/sR8nKajRvRbcjR3RA';};
 
+
+// Update share links with real user stats
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    var weekly = document.getElementById('wa-weekly-btn');
+    var profile = document.getElementById('wa-profile-btn');
+    if(weekly && typeof gs !== 'undefined' && typeof user !== 'undefined'){
+      var li = lvlInfo();
+      var weeklyTxt = 'My BulkUp Weekly Stats!\nWorkouts: '+(gs.weeklyWoCount||0)+'\nStreak: '+gs.streak+' weeks\nXP: '+gs.weeklyPts+'\nJoin me: getbulkup.netlify.app';
+      var profileTxt = 'My BulkUp Profile!\n'+user.name+'\nLevel '+li.level+' - '+li.title+'\nWorkouts: '+gs.totalWo+'\nXP: '+gs.xp+'\nJoin me: getbulkup.netlify.app';
+      weekly.href = 'https://wa.me/?text='+encodeURIComponent(weeklyTxt);
+      profile.href = 'https://wa.me/?text='+encodeURIComponent(profileTxt);
+    }
+  }, 2000);
+});
+
+// BACKUP: Re-register functions on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('[onclick]').forEach(function(el){
+    var fn = el.getAttribute('onclick').replace('()','').replace('(','').split('(')[0].trim();
+    if(window[fn]) el.addEventListener('click', function(e){ e.stopPropagation(); window[fn](); });
+  });
+});
 </script>
 
 <style>
@@ -1582,7 +1605,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 
 
 <!-- AUTH PAGE — video background with proper dark fallback -->
-<div class="page" id="page-auth" style="background:linear-gradient(160deg,#0d0b1a 0%,#12102a 45%,#0a1a0f 100%);overflow:hidden;position:fixed;inset:0;">
+<div class="page" id="page-auth" style="background:linear-gradient(160deg,#0d0b1a 0%,#12102a 45%,#0a1a0f 100%);overflow:hidden;position:fixed;inset:0;display:none;">
 
   <!-- VIDEO BACKGROUND -->
   <video
@@ -1850,7 +1873,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       </div>
 
   <!-- PROFILE -->
-  <div id="sc-profile" style="display:none;flex-direction:column;flex:1;min-height:0;">
+  <div id="sc-profile" style="display:none;flex-direction:column;flex:1;min-height:0;pointer-events:all;position:relative;z-index:20;">
     <div style="padding:16px 18px 7px;flex-shrink:0;"><div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;">Profile 👤</div></div>
     <div class="scroll pad">
       <div class="av-section"><div class="av-circle">💪</div><div class="av-name" id="prof-name">Champ</div><div style="font-size:11px;opacity:.78;margin-top:2px;">Goal: Muscle Gain · Bulking</div><div class="av-pills"><div class="av-pill" id="prof-lv">Level 1 · Rookie</div><div class="av-pill" id="prof-str">🔥 0 day streak</div><div class="av-pill" id="prof-rank-pill">🏆 #—</div></div></div>
@@ -1863,17 +1886,17 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       <!-- SHARE CARD -->
       <div class="card" style="margin-bottom:12px;">
         <div class="card-title" style="margin-bottom:10px;">📤 Share Your Progress</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:11px;">Generate a card to share on Instagram or WhatsApp</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:11px;">Share on WhatsApp or copy your stats</div>
         <div style="display:flex;gap:8px;">
-          <button onclick="shareWeeklyCard()" style="flex:1;padding:12px 8px;border:none;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;pointer-events:all;position:relative;z-index:10;">📊 Weekly Stats</button>
-          <button onclick="shareProfileCard()" style="flex:1;padding:12px 8px;border:none;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;pointer-events:all;position:relative;z-index:10;">🏆 Full Profile</button>
+          <a id="wa-weekly-btn" href="https://wa.me/?text=Check%20my%20BulkUp%20progress!%20Join%20me%3A%20getbulkup.netlify.app" target="_blank" rel="noopener" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-decoration:none;text-align:center;display:block;">📊 Weekly Stats</a>
+          <a id="wa-profile-btn" href="https://wa.me/?text=Check%20my%20BulkUp%20profile!%20Join%20me%3A%20getbulkup.netlify.app" target="_blank" rel="noopener" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-decoration:none;text-align:center;display:block;">🏆 Full Profile</a>
         </div>
       </div>
 
       <div class="settings-list">
         <div class="sl-item" onclick="switchTab('progress')"><div class="sl-icon" style="background:var(--gl);">📈</div><div class="sl-lbl">View Progress</div><div class="sl-arrow">›</div></div>
         <div class="sl-item" onclick="switchTab('leaderboard')"><div class="sl-icon" style="background:var(--yl);">🏆</div><div class="sl-lbl">Live Leaderboard</div><div class="sl-arrow">›</div></div>
-        <div class="sl-item" id="notif-btn" onclick="enableNotifications()" style="cursor:pointer;pointer-events:all;position:relative;z-index:10;"><div class="sl-icon" style="background:var(--pl);">🔔</div><div class="sl-lbl">Enable Notifications</div><div class="sl-arrow">›</div></div>
+        <a id="notif-btn" href="javascript:void(0)" onclick="(function(){if(typeof Notification==='undefined'){alert('Use Chrome browser for notifications');return;}if(Notification.permission==='granted'){alert('Notifications already enabled!');return;}Notification.requestPermission().then(function(p){if(p==='granted'){alert('Notifications enabled!');try{new Notification('BulkUp',{body:'Reminders are ON!'});}catch(e){}}else{alert('Go to Chrome Settings > Site Settings > Notifications > Allow getbulkup.netlify.app');}});})();return false;" style="text-decoration:none;color:inherit;display:block;"><div class="sl-item" style="pointer-events:all;"><div class="sl-icon" style="background:var(--pl);">🔔</div><div class="sl-lbl">Enable Notifications</div><div class="sl-arrow">›</div></div></a>
         <a href="https://forms.gle/sR8nKajRvRbcjR3RA" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;"><div class="sl-item"><div class="sl-icon" style="background:#dcfce7;">💬</div><div class="sl-lbl">Send Feedback</div><div class="sl-arrow">›</div></div></a>
         <div class="sl-item" onclick="doLogout()"><div class="sl-icon" style="background:var(--rl);">🚪</div><div class="sl-lbl" style="color:var(--red);">Sign Out</div><div class="sl-arrow">›</div></div>
       </div>
