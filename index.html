@@ -1030,11 +1030,14 @@ async function requestNotifPermission(){
 
 function scheduleNotifications(){
   if(typeof Notification==='undefined'||!('Notification' in window)||Notification.permission!=='granted')return;
-  // Clear any existing scheduled checks
   if(window._notifTimer)clearInterval(window._notifTimer);
-  // Check every 5 minutes if we should fire a notification
-  window._notifTimer=setInterval(checkAndNotify, 5*60*1000);
-  checkAndNotify(); // also check immediately on load
+  // Fire immediately on load, then check every hour
+  checkAndNotify();
+  window._notifTimer=setInterval(checkAndNotify, 60*60*1000);
+  // Also use visibility change to fire when user returns to app
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='visible')checkAndNotify();
+  });
 }
 
 function checkAndNotify(){
@@ -1621,7 +1624,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 
 
 <!-- AUTH PAGE — video background with proper dark fallback -->
-<div class="page" id="page-auth" style="background:linear-gradient(160deg,#0d0b1a 0%,#12102a 45%,#0a1a0f 100%);overflow:hidden;position:fixed;inset:0;display:none;">
+<div class="page" id="page-auth" style="background:linear-gradient(160deg,#0d0b1a 0%,#12102a 45%,#0a1a0f 100%);overflow:hidden;position:fixed;inset:0;">
 
   <!-- VIDEO BACKGROUND -->
   <video
@@ -1904,8 +1907,8 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
         <div class="card-title" style="margin-bottom:10px;">📤 Share Your Progress</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:11px;">Generate a card to share on Instagram or WhatsApp</div>
         <div style="display:flex;gap:8px;">
-          <div onclick="generateAndShare('weekly')" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-align:center;">📊 Weekly Stats</div>
-          <div onclick="generateAndShare('profile')" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-align:center;">🏆 Full Profile</div>
+          <a onclick="generateAndShare('weekly');return false;" href="#" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-align:center;text-decoration:none;display:block;">📊 Weekly Stats</a>
+          <a onclick="generateAndShare('profile');return false;" href="#" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-align:center;text-decoration:none;display:block;">🏆 Full Profile</a>
         </div>
       </div>
 
