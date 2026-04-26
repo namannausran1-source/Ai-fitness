@@ -1214,178 +1214,44 @@ function showShareModal(shareText){
 
 window.openFeedback=function(){window.location.href='https://forms.gle/sR8nKajRvRbcjR3RA';};
 
+// roundRect polyfill for older Android
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){r=Math.min(r,w/2,h/2);this.beginPath();this.moveTo(x+r,y);this.lineTo(x+w-r,y);this.quadraticCurveTo(x+w,y,x+w,y+r);this.lineTo(x+w,y+h-r);this.quadraticCurveTo(x+w,y+h,x+w-r,y+h);this.lineTo(x+r,y+h);this.quadraticCurveTo(x,y+h,x,y+h-r);this.lineTo(x,y+r);this.quadraticCurveTo(x,y,x+r,y);this.closePath();return this;};}
 
-// Polyfill ctx.roundRect for older Android Chrome
-if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
-  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
-    r=Math.min(r,w/2,h/2);
-    this.beginPath();
-    this.moveTo(x+r,y);this.lineTo(x+w-r,y);this.quadraticCurveTo(x+w,y,x+w,y+r);
-    this.lineTo(x+w,y+h-r);this.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-    this.lineTo(x+r,y+h);this.quadraticCurveTo(x,y+h,x,y+h-r);
-    this.lineTo(x,y+r);this.quadraticCurveTo(x,y,x+r,y);
-    this.closePath();return this;
-  };
-}
 window.generateAndShare=function(type){
   var li=lvlInfo();
-  // Build canvas card
-  var canvas=document.createElement('canvas');
-  canvas.width=1080;canvas.height=1080;
-  var ctx=canvas.getContext('2d');
-
+  var c=document.createElement('canvas');c.width=1080;c.height=1080;
+  var ctx=c.getContext('2d');
   if(type==='weekly'){
-    // Purple gradient background
-    var g1=ctx.createLinearGradient(0,0,1080,1080);
-    g1.addColorStop(0,'#4f46e5');g1.addColorStop(1,'#7c3aed');
-    ctx.fillStyle=g1;ctx.fillRect(0,0,1080,1080);
-    // Decorative circles
-    ctx.beginPath();ctx.arc(950,130,220,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.07)';ctx.fill();
-    ctx.beginPath();ctx.arc(100,950,180,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fill();
-    // App name
+    var g1=ctx.createLinearGradient(0,0,1080,1080);g1.addColorStop(0,'#4f46e5');g1.addColorStop(1,'#7c3aed');ctx.fillStyle=g1;ctx.fillRect(0,0,1080,1080);
     ctx.fillStyle='rgba(255,255,255,0.8)';ctx.font='bold 40px Arial';ctx.textAlign='left';ctx.fillText('BulkUp',80,100);
     ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='30px Arial';ctx.fillText('Weekly Summary',80,150);
-    // Name
-    ctx.fillStyle='#ffffff';ctx.font='bold 72px Arial';ctx.fillText(user.name||'Champion',80,260);
-    // Stats boxes
-    var stats=[
-      {label:'Workouts',value:String(gs.weeklyWoCount||0)},
-      {label:'Week Streak',value:String(gs.streak||0)+'wk'},
-      {label:'Weekly XP',value:String(gs.weeklyPts||0)},
-      {label:'Rank',value:myRank()>0?'#'+myRank():'-'}
-    ];
-    stats.forEach(function(s,i){
-      var col=i%2,row=Math.floor(i/2);
-      var x=80+col*520,y=350+row*220;
-      ctx.fillStyle='rgba(255,255,255,0.12)';
-      ctx.beginPath();ctx.roundRect(x,y,480,180,20);ctx.fill();
-      ctx.fillStyle='#ffffff';ctx.font='bold 70px Arial';ctx.textAlign='left';
-      ctx.fillText(s.value,x+24,y+120);
-      ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='28px Arial';
-      ctx.fillText(s.label,x+24,y+160);
-    });
-    // Level badge
-    ctx.fillStyle='rgba(255,255,255,0.15)';
-    ctx.beginPath();ctx.roundRect(80,840,400,80,40);ctx.fill();
-    ctx.fillStyle='#ffffff';ctx.font='bold 32px Arial';ctx.textAlign='left';
-    ctx.fillText('Level '+li.level+' · '+li.title,108,892);
-    // Watermark
-    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='26px Arial';ctx.textAlign='right';
-    ctx.fillText('getbulkup.netlify.app',1000,1055);
-
-  } else {
-    // Dark profile card
-    var g2=ctx.createLinearGradient(0,0,0,1080);
-    g2.addColorStop(0,'#0f172a');g2.addColorStop(1,'#1e293b');
-    ctx.fillStyle=g2;ctx.fillRect(0,0,1080,1080);
-    // Top accent bar
-    var g3=ctx.createLinearGradient(0,0,1080,0);
-    g3.addColorStop(0,'#4f46e5');g3.addColorStop(1,'#22c55e');
-    ctx.fillStyle=g3;ctx.fillRect(0,0,1080,8);
-    // App name
-    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='bold 34px Arial';ctx.textAlign='left';
-    ctx.fillText('BulkUp',80,90);
-    // Avatar circle
+    ctx.fillStyle='#fff';ctx.font='bold 72px Arial';ctx.fillText(user.name||'Champion',80,260);
+    [{l:'Workouts',v:String(gs.weeklyWoCount||0)},{l:'Streak',v:String(gs.streak||0)+'wk'},{l:'XP',v:String(gs.weeklyPts||0)},{l:'Rank',v:myRank()>0?'#'+myRank():'-'}].forEach(function(s,i){var x=80+(i%2)*520,y=340+Math.floor(i/2)*220;ctx.fillStyle='rgba(255,255,255,0.12)';ctx.fillRect(x,y,480,180);ctx.fillStyle='#fff';ctx.font='bold 70px Arial';ctx.textAlign='left';ctx.fillText(s.v,x+24,y+120);ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='28px Arial';ctx.fillText(s.l,x+24,y+160);});
+    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='26px Arial';ctx.textAlign='right';ctx.fillText('getbulkup.netlify.app',1000,1055);
+  }else{
+    var g2=ctx.createLinearGradient(0,0,0,1080);g2.addColorStop(0,'#0f172a');g2.addColorStop(1,'#1e293b');ctx.fillStyle=g2;ctx.fillRect(0,0,1080,1080);
+    var g3=ctx.createLinearGradient(0,0,1080,0);g3.addColorStop(0,'#4f46e5');g3.addColorStop(1,'#22c55e');ctx.fillStyle=g3;ctx.fillRect(0,0,1080,8);
+    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='bold 34px Arial';ctx.textAlign='left';ctx.fillText('BulkUp',80,90);
     ctx.beginPath();ctx.arc(540,200,90,0,Math.PI*2);ctx.fillStyle='#4f46e5';ctx.fill();
     ctx.font='70px Arial';ctx.textAlign='center';ctx.fillText(user.avatar||'💪',540,228);
-    // Name + level
-    ctx.fillStyle='#ffffff';ctx.font='bold 68px Arial';ctx.fillText(user.name||'Champion',540,360);
-    ctx.fillStyle='#a5b4fc';ctx.font='36px Arial';
-    ctx.fillText('Level '+li.level+' · '+li.title,540,415);
-    // XP bar
-    ctx.fillStyle='rgba(255,255,255,0.1)';
-    ctx.beginPath();ctx.roundRect(100,450,880,22,11);ctx.fill();
-    ctx.fillStyle='#4f46e5';
-    ctx.beginPath();ctx.roundRect(100,450,Math.round(880*(li.pct/100)),22,11);ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='24px Arial';
-    ctx.fillText(gs.xp+' XP · '+li.pct+'% to next level',540,504);
-    // Stats row
-    var stats2=[
-      {l:'Workouts',v:String(gs.totalWo||0),c:'#22c55e'},
-      {l:'Streak',v:String(gs.streak||0)+'wk',c:'#f97316'},
-      {l:'Rank',v:myRank()>0?'#'+myRank():'-',c:'#eab308'},
-      {l:'Habits',v:String(gs.habitStreak||0)+'d',c:'#a855f7'}
-    ];
-    stats2.forEach(function(s,i){
-      var x=100+i*220,y=540;
-      ctx.fillStyle='rgba(255,255,255,0.07)';
-      ctx.beginPath();ctx.roundRect(x,y,200,160,16);ctx.fill();
-      ctx.fillStyle=s.c;ctx.font='bold 56px Arial';ctx.textAlign='center';
-      ctx.fillText(s.v,x+100,y+88);
-      ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='24px Arial';
-      ctx.fillText(s.l,x+100,y+136);
-    });
-    // Watermark
-    ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font='24px Arial';ctx.textAlign='center';
-    ctx.fillText('getbulkup.netlify.app',540,1055);
+    ctx.fillStyle='#fff';ctx.font='bold 68px Arial';ctx.fillText(user.name||'Champion',540,360);
+    ctx.fillStyle='#a5b4fc';ctx.font='36px Arial';ctx.fillText('Level '+li.level+' - '+li.title,540,415);
+    ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fillRect(100,450,880,22);ctx.fillStyle='#4f46e5';ctx.fillRect(100,450,Math.round(880*(li.pct/100)),22);
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='24px Arial';ctx.fillText(gs.xp+' XP - '+li.pct+'% to next',540,504);
+    [{l:'Workouts',v:String(gs.totalWo||0),c:'#22c55e'},{l:'Streak',v:String(gs.streak||0)+'wk',c:'#f97316'},{l:'Rank',v:myRank()>0?'#'+myRank():'-',c:'#eab308'},{l:'Habits',v:String(gs.habitStreak||0)+'d',c:'#a855f7'}].forEach(function(s,i){var x=100+i*220,y=540;ctx.fillStyle='rgba(255,255,255,0.07)';ctx.fillRect(x,y,200,160);ctx.fillStyle=s.c;ctx.font='bold 56px Arial';ctx.textAlign='center';ctx.fillText(s.v,x+100,y+88);ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='24px Arial';ctx.fillText(s.l,x+100,y+136);});
+    ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font='24px Arial';ctx.textAlign='center';ctx.fillText('getbulkup.netlify.app',540,1055);
   }
-
-  // Show card overlay with the generated image
-  showCardOverlay(canvas, type);
+  var dataUrl=c.toDataURL('image/png');
+  var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+  var img=document.createElement('img');img.src=dataUrl;img.style.cssText='max-width:100%;max-height:52vh;border-radius:16px;display:block;';
+  var tip=document.createElement('p');tip.style.cssText='color:#fff;font-size:12px;font-weight:700;margin:10px 0 8px;text-align:center;';tip.textContent='Long-press image to Save, then share anywhere';
+  var sb=document.createElement('button');sb.textContent='Share to Any App';sb.style.cssText='width:100%;max-width:340px;padding:13px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-size:14px;font-weight:900;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';
+  sb.onclick=function(){c.toBlob(function(blob){if(!blob)return;var f=new File([blob],'bulkup.png',{type:'image/png'});if(navigator.share){var p=navigator.canShare&&navigator.canShare({files:[f]})?navigator.share({files:[f],title:'BulkUp',text:'getbulkup.netlify.app'}):navigator.share({title:'BulkUp',text:'Check my BulkUp stats! getbulkup.netlify.app'});p.catch(function(e){if(e.name!=='AbortError')showToast('Long-press image to share');});}else{showToast('Long-press image to save and share');}});};
+  var wt=encodeURIComponent(type==='weekly'?'BulkUp Weekly: Workouts '+(gs.weeklyWoCount||0)+', Streak '+gs.streak+'wk, XP '+gs.weeklyPts+' getbulkup.netlify.app':'BulkUp Profile: '+user.name+', Level '+li.level+', Workouts '+gs.totalWo+', XP '+gs.xp+' getbulkup.netlify.app');
+  var wa=document.createElement('a');wa.href='https://wa.me/?text='+wt;wa.target='_blank';wa.rel='noopener';wa.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-size:14px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:8px;';wa.textContent='WhatsApp';
+  var cl=document.createElement('button');cl.textContent='Close';cl.style.cssText='width:100%;max-width:340px;padding:13px;border:2px solid rgba(255,255,255,0.3);border-radius:14px;background:transparent;color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-sizing:border-box;';cl.onclick=function(){document.body.removeChild(ov);};
+  ov.appendChild(img);ov.appendChild(tip);ov.appendChild(sb);ov.appendChild(wa);ov.appendChild(cl);document.body.appendChild(ov);
 };
-
-window.showCardOverlay=function(canvas,type){
-  var dataUrl=canvas.toDataURL('image/png');
-  var li=lvlInfo();
-  var ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
-  // Card image
-  var img=document.createElement('img');
-  img.src=dataUrl;
-  img.style.cssText='max-width:100%;max-height:52vh;border-radius:16px;display:block;';
-  // Tip
-  var tip=document.createElement('p');
-  tip.style.cssText='color:#fff;font-size:12px;font-weight:700;margin:10px 0 8px;text-align:center;line-height:1.5;opacity:0.85;';
-  tip.innerHTML='Long-press image to Save, then share anywhere';
-  // Share button - uses native Android share sheet (all apps)
-  var shareBtn=document.createElement('button');
-  shareBtn.textContent='📤 Share to Any App';
-  shareBtn.style.cssText='width:100%;max-width:340px;padding:13px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-size:14px;font-weight:900;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';
-  shareBtn.onclick=function(){
-    canvas.toBlob(function(blob){
-      if(!blob)return;
-      var file=new File([blob],'bulkup-'+type+'.png',{type:'image/png'});
-      if(navigator.share){
-        // Try with image file first
-        var p=navigator.canShare&&navigator.canShare({files:[file]})
-          ?navigator.share({files:[file],title:'BulkUp Progress',text:'Check my BulkUp stats! getbulkup.netlify.app'})
-          :navigator.share({title:'BulkUp Progress',text:'Check my BulkUp stats! getbulkup.netlify.app'});
-        p.catch(function(e){if(e.name!=='AbortError')showToast('Long-press image to save and share');});
-      }else{
-        showToast('Long-press the image above to save and share');
-      }
-    },'image/png');
-  };
-  // WhatsApp direct
-  var li2=lvlInfo();
-  var waText=encodeURIComponent(type==='weekly'
-    ?'My BulkUp Weekly Stats!
-Workouts: '+(gs.weeklyWoCount||0)+'
-Streak: '+gs.streak+'wk
-XP: '+gs.weeklyPts+'
-Join: getbulkup.netlify.app'
-    :'My BulkUp Profile!
-'+user.name+'
-Level '+li2.level+' - '+li2.title+'
-Workouts: '+gs.totalWo+'
-XP: '+gs.xp+'
-Join: getbulkup.netlify.app');
-  var wa=document.createElement('a');
-  wa.href='https://wa.me/?text='+waText;
-  wa.target='_blank';wa.rel='noopener';
-  wa.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-size:14px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:8px;';
-  wa.textContent='💚 WhatsApp';
-  // Close
-  var cl=document.createElement('button');
-  cl.textContent='✕ Close';
-  cl.style.cssText='width:100%;max-width:340px;padding:13px;border:2px solid rgba(255,255,255,0.3);border-radius:14px;background:transparent;color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-sizing:border-box;';
-  cl.onclick=function(){document.body.removeChild(ov);};
-  ov.appendChild(img);ov.appendChild(tip);ov.appendChild(shareBtn);ov.appendChild(wa);ov.appendChild(cl);
-  document.body.appendChild(ov);
-};
-
-
-
 
 </script>
 
@@ -1398,7 +1264,7 @@ Join: getbulkup.netlify.app');
 html,body{height:100%;overscroll-behavior:none;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;display:flex;justify-content:center;overflow:hidden;}
 .app{width:100%;max-width:430px;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:var(--bg);overflow:hidden;}
-.page{position:absolute;inset:0;display:none;flex-direction:column;opacity:0;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}
+.page{position:absolute;inset:0;display:none;flex-direction:column;opacity:0;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}.page *{pointer-events:none;}.page.active *{pointer-events:all;}
 .page.active{display:flex;opacity:1;transform:translateY(0);z-index:10;}
 .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:20px;}
 .scroll::-webkit-scrollbar{display:none;}
@@ -1838,7 +1704,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 </div>
 
 <!-- MAIN APP -->
-<div class="page" id="page-app" style="padding-bottom:90px;">
+<div class="page" id="page-app" style="padding-bottom:90px;pointer-events:all;">
 
   <!-- HOME -->
   <div id="sc-home" style="display:flex;flex-direction:column;flex:1;min-height:0;">
@@ -2023,7 +1889,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       </div>
 
   <!-- PROFILE -->
-  <div id="sc-profile" style="display:none;flex-direction:column;flex:1;min-height:0;pointer-events:all;position:relative;z-index:20;">
+  <div id="sc-profile" style="display:none;flex-direction:column;flex:1;min-height:0;">
     <div style="padding:16px 18px 7px;flex-shrink:0;"><div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;">Profile 👤</div></div>
     <div class="scroll pad">
       <div class="av-section"><div class="av-circle">💪</div><div class="av-name" id="prof-name">Champ</div><div style="font-size:11px;opacity:.78;margin-top:2px;">Goal: Muscle Gain · Bulking</div><div class="av-pills"><div class="av-pill" id="prof-lv">Level 1 · Rookie</div><div class="av-pill" id="prof-str">🔥 0 day streak</div><div class="av-pill" id="prof-rank-pill">🏆 #—</div></div></div>
@@ -2036,7 +1902,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       <!-- SHARE CARD -->
       <div class="card" style="margin-bottom:12px;">
         <div class="card-title" style="margin-bottom:10px;">📤 Share Your Progress</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:11px;">Generate a card to share on Instagram, WhatsApp & more</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:11px;">Generate a card to share on Instagram or WhatsApp</div>
         <div style="display:flex;gap:8px;">
           <button onclick="generateAndShare('weekly')" style="flex:1;padding:12px 8px;border:none;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;">📊 Weekly Stats</button>
           <button onclick="generateAndShare('profile')" style="flex:1;padding:12px 8px;border:none;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;">🏆 Full Profile</button>
@@ -2046,7 +1912,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       <div class="settings-list">
         <div class="sl-item" onclick="switchTab('progress')"><div class="sl-icon" style="background:var(--gl);">📈</div><div class="sl-lbl">View Progress</div><div class="sl-arrow">›</div></div>
         <div class="sl-item" onclick="switchTab('leaderboard')"><div class="sl-icon" style="background:var(--yl);">🏆</div><div class="sl-lbl">Live Leaderboard</div><div class="sl-arrow">›</div></div>
-        <div class="sl-item" id="notif-btn" onclick="if(typeof Notification!=='undefined'){Notification.requestPermission().then(function(p){if(p==='granted'){showToast('Notifications enabled!');}else{showToast('Allow notifications in Chrome Settings');}});}else{showToast('Use Chrome for notifications');}" style="cursor:pointer;"><div class="sl-icon" style="background:var(--pl);">🔔</div><div class="sl-lbl">Enable Notifications</div><div class="sl-arrow">›</div></div>
+        <div class="sl-item" id="notif-btn" onclick="enableNotifications()" style="cursor:pointer;"><div class="sl-icon" style="background:var(--pl);">🔔</div><div class="sl-lbl">Enable Notifications</div><div class="sl-arrow">›</div></div>
         <a href="https://forms.gle/sR8nKajRvRbcjR3RA" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;"><div class="sl-item"><div class="sl-icon" style="background:#dcfce7;">💬</div><div class="sl-lbl">Send Feedback</div><div class="sl-arrow">›</div></div></a>
         <div class="sl-item" onclick="doLogout()"><div class="sl-icon" style="background:var(--rl);">🚪</div><div class="sl-lbl" style="color:var(--red);">Sign Out</div><div class="sl-arrow">›</div></div>
       </div>
