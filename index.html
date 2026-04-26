@@ -324,11 +324,11 @@ window.obNext=async function(step){
   }
   if(step===4){if(!obLevel){e.textContent='Pick one!';return;}user.level=obLevel;}
   g('obs'+step).classList.remove('show');obStep=step+1;
-  if(obStep===5){/* notification step */}if(obStep===6){g('ob-fn').textContent=user.name;g('ob-fp').textContent=`Daily target: ${user.calories} kcal · ${user.protein}g protein 💪`;}
+  if(obStep===5){g('ob-fn').textContent=user.name;g('ob-fp').textContent=`Daily target: ${user.calories} kcal · ${user.protein}g protein 💪`;}
   g('obs'+obStep).classList.add('show');renderObProg();
 };
 window.pickOb=function(el,g2){document.querySelectorAll(`#ob-${g2}-grid .ob-opt`).forEach(e=>e.classList.remove('sel'));el.classList.add('sel');if(g2==='lvl')obLevel=el.dataset.v;};
-window.enterApp=async function(){const po=g('page-ob');if(po){po.classList.remove('active');po.style.display='none';}const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}_appReady=true;setTimeout(()=>{try{initApp();switchTab('home');}catch(e){console.error(e);}},320);saveFSNow().catch(console.error);};
+window.enterApp=async function(){const po=g('page-ob');if(po){po.classList.remove('active');po.style.display='none';}const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}_appReady=true;setTimeout(()=>{try{initApp();switchTab('home');}catch(e){console.error(e);}},320);saveFSNow().catch(console.error);if(typeof Notification!=='undefined'&&Notification.permission==='default'){setTimeout(function(){Notification.requestPermission().then(function(p){if(p==='granted'){gs.notifsEnabled=true;saveFS();scheduleNotifications();showToast('🔔 Notifications enabled!');}});},3000);}};
 function calcTargets(){
   const w=parseFloat(user.weight)||60,h=parseFloat(user.height)||175,a=parseFloat(user.age)||20;
   const bmr=Math.round(88.36+(13.4*w)+(4.8*h)-(5.7*a));
@@ -997,8 +997,6 @@ window.switchTab=function(t){
     const rp=g('prof-rank-pill');if(rp)rp.textContent='🏆 #'+(rk>0?rk:'—');
   }
 };
-
-renderObProg();
 
 window.showRestDaySetting=function(){
   const cur=user.restDaysPerWeek||4;
@@ -1744,14 +1742,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       <div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.05em;">Monthly Food Budget</div><div class="ob-grid" id="ob-budget-grid" style="grid-template-columns:repeat(3,1fr);"><div class="ob-opt" data-v="low" onclick="pickOb(this,'budget')"><div class="oi">💸</div><div class="ol">Under ₹3k</div></div><div class="ob-opt" data-v="mid" onclick="pickOb(this,'budget')"><div class="oi">💰</div><div class="ol">₹3k–6k</div></div><div class="ob-opt" data-v="high" onclick="pickOb(this,'budget')"><div class="oi">🤑</div><div class="ol">₹6k+</div></div></div></div>
       <div class="ob-err" id="ob-e3"></div><button class="ob-btn" onclick="obNext(3)">Continue →</button></div>
     <div class="ob-step" id="obs4"><div class="ob-emoji">🎯</div><div class="ob-h">Where are you <em>right now?</em></div><div class="ob-p">Pick the one that sounds like you.</div><div class="ob-grid" id="ob-lvl-grid"><div class="ob-opt" data-v="Never worked out" onclick="pickOb(this,'lvl')"><div class="oi">🧍</div><div class="ol">Never worked out</div></div><div class="ob-opt" data-v="Sometimes workout" onclick="pickOb(this,'lvl')"><div class="oi">🏃</div><div class="ol">Sometimes workout</div></div><div class="ob-opt" data-v="Few months in" onclick="pickOb(this,'lvl')"><div class="oi">💪</div><div class="ol">Few months in</div></div><div class="ob-opt" data-v="Not gaining weight" onclick="pickOb(this,'lvl')"><div class="oi">😤</div><div class="ol">Not gaining weight</div></div></div><div class="ob-err" id="ob-e4"></div><button class="ob-btn" onclick="obNext(4)">Continue →</button></div>
-    <div class="ob-step" id="obs5">
-  <div class="ob-emoji">🔔</div>
-  <div class="ob-h">Stay <em>Consistent</em></div>
-  <div class="ob-p">Enable notifications to get daily workout reminders and streak alerts.</div>
-  <button class="ob-btn g" id="ob-notif-btn" onclick="obEnableNotif()">🔔 Enable Reminders</button>
-  <button class="ob-btn" style="margin-top:10px;background:rgba(0,0,0,0.07);color:var(--text);" onclick="enterApp()">Skip for now</button>
-</div>
-<div class="ob-step" id="obs6"><div class="ob-emoji">🚀</div><div class="ob-h">You're in, <em id="ob-fn">champ</em>!</div><div class="ob-p" id="ob-fp">Your plan is ready!</div><button class="ob-btn g" onclick="enterApp()">Open My Plan 🚀</button></div>
+    <div class="ob-step" id="obs5"><div class="ob-emoji">🚀</div><div class="ob-h">You're in, <em id="ob-fn">champ</em>!</div><div class="ob-p" id="ob-fp">Your plan is ready!</div><button class="ob-btn g" onclick="enterApp()">Open My Plan 🚀</button></div>
   </div>
 </div>
 
