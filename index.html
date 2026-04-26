@@ -1307,7 +1307,7 @@ window.openFeedback=function(){window.location.href='https://forms.gle/sR8nKajRv
 html,body{height:100%;overscroll-behavior:none;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;display:flex;justify-content:center;overflow:hidden;}
 .app{width:100%;max-width:430px;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:var(--bg);overflow:hidden;}
-.page{position:absolute;inset:0;display:none;flex-direction:column;opacity:0;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}.page *{pointer-events:none;}.page.active *{pointer-events:all;}
+.page{position:absolute;inset:0;display:none;flex-direction:column;opacity:0;transform:translateY(12px);transition:opacity .28s ease,transform .28s ease;z-index:1;}
 .page.active{display:flex;opacity:1;transform:translateY(0);z-index:10;}
 .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:20px;}
 .scroll::-webkit-scrollbar{display:none;}
@@ -1947,15 +1947,15 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
         <div class="card-title" style="margin-bottom:10px;">📤 Share Your Progress</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:11px;">Generate a card to share on Instagram or WhatsApp</div>
         <div style="display:flex;gap:8px;">
-          <a href="#" onclick="generateAndShare('weekly');return false;" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-decoration:none;text-align:center;display:block;">📊 Weekly Stats</a>
-          <a href="#" onclick="generateAndShare('profile');return false;" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-decoration:none;text-align:center;display:block;">🏆 Full Profile</a>
+          <span onclick="generateAndShare('weekly')" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-align:center;display:block;-webkit-tap-highlight-color:rgba(0,0,0,0.1);">📊 Weekly Stats</span>
+          <span onclick="generateAndShare('profile')" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-align:center;display:block;-webkit-tap-highlight-color:rgba(0,0,0,0.1);">🏆 Full Profile</span>
         </div>
       </div>
 
       <div class="settings-list">
         <div class="sl-item" onclick="switchTab('progress')"><div class="sl-icon" style="background:var(--gl);">📈</div><div class="sl-lbl">View Progress</div><div class="sl-arrow">›</div></div>
         <div class="sl-item" onclick="switchTab('leaderboard')"><div class="sl-icon" style="background:var(--yl);">🏆</div><div class="sl-lbl">Live Leaderboard</div><div class="sl-arrow">›</div></div>
-        <div class="sl-item" id="notif-btn" onclick="enableNotifications()" style="cursor:pointer;"><div class="sl-icon" style="background:var(--pl);">🔔</div><div class="sl-lbl">Enable Notifications</div><div class="sl-arrow">›</div></div>
+        <a href="#" onclick="enableNotifications();return false;" style="text-decoration:none;color:inherit;display:block;"><div class="sl-item" id="notif-btn"><div class="sl-icon" style="background:var(--pl);">🔔</div><div class="sl-lbl">Enable Notifications</div><div class="sl-arrow">›</div></div></a>
         <a href="https://forms.gle/sR8nKajRvRbcjR3RA" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;"><div class="sl-item"><div class="sl-icon" style="background:#dcfce7;">💬</div><div class="sl-lbl">Send Feedback</div><div class="sl-arrow">›</div></div></a>
         <div class="sl-item" onclick="doLogout()"><div class="sl-icon" style="background:var(--rl);">🚪</div><div class="sl-lbl" style="color:var(--red);">Sign Out</div><div class="sl-arrow">›</div></div>
       </div>
