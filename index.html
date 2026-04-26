@@ -328,7 +328,7 @@ window.obNext=async function(step){
   g('obs'+obStep).classList.add('show');renderObProg();
 };
 window.pickOb=function(el,g2){document.querySelectorAll(`#ob-${g2}-grid .ob-opt`).forEach(e=>e.classList.remove('sel'));el.classList.add('sel');if(g2==='lvl')obLevel=el.dataset.v;};
-window.enterApp=async function(){const po=g('page-ob');if(po){po.classList.remove('active');po.style.display='none';}const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}_appReady=true;setTimeout(()=>{try{initApp();switchTab('home');}catch(e){console.error(e);}},320);saveFSNow().catch(console.error);if(typeof Notification!=='undefined'&&Notification.permission==='default'){setTimeout(function(){Notification.requestPermission().then(function(p){if(p==='granted'){gs.notifsEnabled=true;saveFS();scheduleNotifications();showToast('🔔 Notifications enabled!');}});},3000);}};
+window.enterApp=async function(){const po=g('page-ob');if(po){po.classList.remove('active');po.style.display='none';}const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}_appReady=true;setTimeout(()=>{try{initApp();switchTab('home');}catch(e){console.error(e);}},320);saveFSNow().catch(console.error);};
 function calcTargets(){
   const w=parseFloat(user.weight)||60,h=parseFloat(user.height)||175,a=parseFloat(user.age)||20;
   const bmr=Math.round(88.36+(13.4*w)+(4.8*h)-(5.7*a));
@@ -998,6 +998,7 @@ window.switchTab=function(t){
   }
 };
 
+
 window.showRestDaySetting=function(){
   const cur=user.restDaysPerWeek||4;
   const opts=[1,2,3,4,5,6];
@@ -1099,203 +1100,165 @@ function fireNotif(title,body,url){
   }catch(e){console.warn('Notif error:',e);}
 }
 
-// ── obEnableNotif: called from onboarding notification step ──────────────
-window.obEnableNotif=function(){
-  var btn=document.getElementById('ob-notif-btn');
-  if(btn){btn.textContent='Requesting...';btn.disabled=true;}
-  if(typeof Notification==='undefined'){
-    showToast('Notifications not supported in this browser');
-    setTimeout(function(){
-      var s=document.getElementById('obs5');if(s)s.classList.remove('show');
-      var s6=document.getElementById('obs6');if(s6)s6.classList.add('show');
-      renderObProg();
-    },500);
-    return;
-  }
-  Notification.requestPermission().then(function(p){
-    if(p==='granted'){
-      gs.notifsEnabled=true;
-      scheduleNotifications();
-      showToast('🔔 Notifications enabled!');
-    }
-    // Move to next step regardless
-    var s=document.getElementById('obs5');if(s)s.classList.remove('show');
-    var s6=document.getElementById('obs6');if(s6)s6.classList.add('show');
-    renderObProg();
-  }).catch(function(){
-    var s=document.getElementById('obs5');if(s)s.classList.remove('show');
-    var s6=document.getElementById('obs6');if(s6)s6.classList.add('show');
-    renderObProg();
-  });
-};
-
-// ── enableNotifications: profile button ──────────────────────────────────
 window.enableNotifications=function(){
-  var btn=document.getElementById('notif-btn');
+  var btn=g('notif-btn');
   var lbl=btn?btn.querySelector('.sl-lbl'):null;
-  if(typeof Notification==='undefined'){
-    showToast('Notifications not supported. Use Chrome browser.');
-    return;
-  }
-  if(Notification.permission==='granted'){
-    gs.notifsEnabled=true;saveFS();scheduleNotifications();
-    if(lbl)lbl.textContent='Notifications On ✅';
-    showToast('🔔 Notifications already enabled!');
-    return;
-  }
-  if(Notification.permission==='denied'){
-    showToast('Blocked! Chrome ⋮ → Settings → Site Settings → Notifications → Allow');
-    return;
-  }
-  Notification.requestPermission().then(function(p){
-    if(p==='granted'){
-      gs.notifsEnabled=true;saveFS();scheduleNotifications();
-      if(lbl)lbl.textContent='Notifications On ✅';
-      if(btn)btn.style.background='#f0fdf4';
-      showToast('🔔 Notifications enabled!');
-      try{new Notification('BulkUp 💪',{body:'Daily reminders are ON! Stay consistent 🔥',icon:'/icon-192.png'});}catch(e){}
-    }else{
-      showToast('Notifications denied. Enable from Chrome Settings.');
-    }
-  });
-};
-
-// ── generateAndShare: generates canvas card and shows share overlay ───────
-window.generateAndShare=function(type){
-  var li=lvlInfo();
-  var canvas=document.createElement('canvas');
-  canvas.width=1080;canvas.height=1080;
-  var ctx=canvas.getContext('2d');
-
-  if(type==='weekly'){
-    var g1=ctx.createLinearGradient(0,0,1080,1080);
-    g1.addColorStop(0,'#4f46e5');g1.addColorStop(1,'#7c3aed');
-    ctx.fillStyle=g1;ctx.fillRect(0,0,1080,1080);
-    ctx.beginPath();ctx.arc(950,130,220,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,255,255,0.07)';ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,0.85)';
-    ctx.font='bold 44px Arial';ctx.textAlign='left';
-    ctx.fillText('BulkUp',80,105);
-    ctx.fillStyle='rgba(255,255,255,0.55)';
-    ctx.font='32px Arial';ctx.fillText('Weekly Summary',80,155);
-    ctx.fillStyle='#fff';ctx.font='bold 74px Arial';
-    ctx.fillText(user.name||'Champion',80,270);
-    var stats=[
-      {l:'Workouts',v:String(gs.weeklyWoCount||0)},
-      {l:'Streak',v:String(gs.streak||0)+'wk'},
-      {l:'Weekly XP',v:String(gs.weeklyPts||0)},
-      {l:'Rank',v:myRank()>0?'#'+myRank():'-'}
-    ];
-    stats.forEach(function(s,i){
-      var col=i%2,row=Math.floor(i/2),x=80+col*520,y=360+row*230;
-      ctx.fillStyle='rgba(255,255,255,0.13)';
-      ctx.fillRect(x,y,490,190);
-      ctx.fillStyle='#fff';ctx.font='bold 72px Arial';ctx.textAlign='left';
-      ctx.fillText(s.v,x+26,y+128);
-      ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='30px Arial';
-      ctx.fillText(s.l,x+26,y+172);
-    });
-    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='26px Arial';
-    ctx.textAlign='right';ctx.fillText('getbulkup.netlify.app',1000,1058);
-  } else {
-    var g2=ctx.createLinearGradient(0,0,0,1080);
-    g2.addColorStop(0,'#0f172a');g2.addColorStop(1,'#1e293b');
-    ctx.fillStyle=g2;ctx.fillRect(0,0,1080,1080);
-    var g3=ctx.createLinearGradient(0,0,1080,0);
-    g3.addColorStop(0,'#4f46e5');g3.addColorStop(1,'#22c55e');
-    ctx.fillStyle=g3;ctx.fillRect(0,0,1080,8);
-    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='bold 36px Arial';
-    ctx.textAlign='left';ctx.fillText('BulkUp',80,92);
-    ctx.beginPath();ctx.arc(540,205,95,0,Math.PI*2);
-    ctx.fillStyle='#4f46e5';ctx.fill();
-    ctx.font='74px Arial';ctx.textAlign='center';
-    ctx.fillText(user.avatar||'💪',540,235);
-    ctx.fillStyle='#fff';ctx.font='bold 70px Arial';
-    ctx.fillText(user.name||'Champion',540,368);
-    ctx.fillStyle='#a5b4fc';ctx.font='38px Arial';
-    ctx.fillText('Level '+li.level+' · '+li.title,540,422);
-    ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fillRect(100,455,880,22);
-    ctx.fillStyle='#4f46e5';ctx.fillRect(100,455,Math.round(880*(li.pct/100)),22);
-    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='24px Arial';
-    ctx.fillText(gs.xp+' XP · '+li.pct+'% to next level',540,508);
-    var stats2=[
-      {l:'Workouts',v:String(gs.totalWo||0),c:'#22c55e'},
-      {l:'Streak',v:String(gs.streak||0)+'wk',c:'#f97316'},
-      {l:'Rank',v:myRank()>0?'#'+myRank():'-',c:'#eab308'},
-      {l:'Habits',v:String(gs.habitStreak||0)+'d',c:'#a855f7'}
-    ];
-    stats2.forEach(function(s,i){
-      var x=100+i*220,y=545;
-      ctx.fillStyle='rgba(255,255,255,0.07)';ctx.fillRect(x,y,200,165);
-      ctx.fillStyle=s.c;ctx.font='bold 58px Arial';ctx.textAlign='center';
-      ctx.fillText(s.v,x+100,y+92);
-      ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='25px Arial';
-      ctx.fillText(s.l,x+100,y+140);
-    });
-    ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font='24px Arial';ctx.textAlign='center';
-    ctx.fillText('getbulkup.netlify.app',540,1058);
-  }
-
-  // Show card in fullscreen overlay
-  var dataUrl=canvas.toDataURL('image/png');
-  var ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
-  var img=document.createElement('img');
-  img.src=dataUrl;
-  img.style.cssText='max-width:100%;max-height:50vh;border-radius:16px;display:block;';
-  var tip=document.createElement('p');
-  tip.style.cssText='color:#fff;font-size:12px;margin:10px 0 8px;text-align:center;opacity:0.8;';
-  tip.textContent='Long-press image → Save to Gallery → Share anywhere';
-  // Native share button
-  var sb=document.createElement('a');
-  sb.href='#';
-  sb.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border-radius:14px;background:#4f46e5;color:#fff;font-size:14px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:8px;';
-  sb.textContent='📤 Share to Any App';
-  sb.onclick=function(e){
-    e.preventDefault();
-    canvas.toBlob(function(blob){
-      if(!blob){showToast('Long-press image to save');return;}
-      var file=new File([blob],'bulkup-'+type+'.png',{type:'image/png'});
-      if(navigator.share){
-        var data=navigator.canShare&&navigator.canShare({files:[file]})
-          ?{files:[file],title:'BulkUp Progress',text:'My BulkUp stats! getbulkup.netlify.app'}
-          :{title:'BulkUp Progress',text:'My BulkUp stats! getbulkup.netlify.app'};
-        navigator.share(data).catch(function(e){
-          if(e.name!=='AbortError')showToast('Long-press image to save and share');
-        });
-      }else{showToast('Long-press the image above to save');}
-    },'image/png');
-    return false;
+  // Show modal immediately — guaranteed visible
+  var m=document.createElement('div');
+  m.id='notif-modal';
+  m.style.cssText='position:fixed;left:0;right:0;bottom:0;top:0;z-index:99999;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;justify-content:center;';
+  var inner=document.createElement('div');
+  inner.style.cssText='background:#fff;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;';
+  inner.innerHTML='<div style="font-family:Nunito,sans-serif;font-size:20px;font-weight:900;margin-bottom:6px;">Enable Notifications</div>'
+    +'<div id="ns" style="background:#f0f4ff;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;color:#1e293b;line-height:1.8;">Get daily reminders to stay consistent!</div>'
+    +'<button id="nr" style="display:block;width:100%;padding:15px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;box-sizing:border-box;">Enable Now</button>'
+    +'<button id="nc" style="display:block;width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-sizing:border-box;">Close</button>';
+  m.appendChild(inner);
+  document.body.appendChild(m);
+  document.getElementById('nc').onclick=function(){
+    var el=document.getElementById('notif-modal');
+    if(el)document.body.removeChild(el);
   };
-  // WhatsApp direct
-  var waText=encodeURIComponent(type==='weekly'
-    ?'My BulkUp Weekly Stats!
-Workouts: '+(gs.weeklyWoCount||0)+'
-Streak: '+gs.streak+'wk
-XP: '+gs.weeklyPts+'
-getbulkup.netlify.app'
-    :'My BulkUp Profile!
-'+user.name+'
-Level '+(lvlInfo().level)+'
-Workouts: '+gs.totalWo+'
-XP: '+gs.xp+'
-getbulkup.netlify.app');
-  var wa=document.createElement('a');
-  wa.href='https://wa.me/?text='+waText;
-  wa.target='_blank';wa.rel='noopener';
-  wa.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-size:14px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:8px;';
-  wa.textContent='💚 Share on WhatsApp';
-  var cl=document.createElement('a');
-  cl.href='#';
-  cl.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border:2px solid rgba(255,255,255,0.3);border-radius:14px;color:#fff;font-size:14px;font-weight:700;text-align:center;text-decoration:none;box-sizing:border-box;';
-  cl.textContent='✕ Close';
-  cl.onclick=function(e){e.preventDefault();document.body.removeChild(ov);return false;};
-  ov.appendChild(img);ov.appendChild(tip);ov.appendChild(sb);ov.appendChild(wa);ov.appendChild(cl);
-  document.body.appendChild(ov);
+  document.getElementById('nr').onclick=function(){
+    var s=document.getElementById('ns');
+    var el=document.getElementById('notif-modal');
+    if(typeof Notification==='undefined'){
+      s.textContent='Not supported in this browser. Try Chrome.';
+      s.style.color='#ef4444';
+      return;
+    }
+    if(Notification.permission==='granted'){
+      if(lbl)lbl.textContent='On';
+      if(el)document.body.removeChild(el);
+      showToast('Notifications already enabled!');
+      return;
+    }
+    if(Notification.permission==='denied'){
+      s.innerHTML='Blocked by browser.<br>Fix: Chrome menu (3 dots) > Settings > Site Settings > Notifications > find getbulkup.netlify.app > Allow';
+      s.style.color='#ef4444';
+      return;
+    }
+    Notification.requestPermission().then(function(p){
+      if(p==='granted'){
+        if(lbl)lbl.textContent='On';
+        if(btn)btn.style.background='#f0fdf4';
+        if(el)document.body.removeChild(el);
+        showToast('Notifications enabled!');
+      }else{
+        s.textContent='Permission denied. Go to Chrome Settings > Site Settings > Notifications > Allow.';
+        s.style.color='#ef4444';
+      }
+    });
+  };
 };
+
+window.shareWeeklyCard=function(){
+  var li=lvlInfo();
+  var txt='My BulkUp Weekly Stats!'
+    +'\nWorkouts this week: '+(gs.weeklyWoCount||0)
+    +'\nStreak: '+gs.streak+' weeks'
+    +'\nXP earned: '+gs.weeklyPts
+    +'\nRank: '+(myRank()>0?'#'+myRank():'-')
+    +'\nJoin me: getbulkup.netlify.app';
+  showShareModal(txt);
+};
+
+window.shareProfileCard=function(){
+  var li=lvlInfo();
+  var txt='My BulkUp Profile!'
+    +'\nName: '+user.name
+    +'\nLevel: '+li.level+' ('+li.title+')'
+    +'\nTotal Workouts: '+gs.totalWo
+    +'\nStreak: '+gs.streak+' weeks'
+    +'\nXP: '+gs.xp
+    +'\nJoin me: getbulkup.netlify.app';
+  showShareModal(txt);
+};
+
+function showShareModal(shareText){
+  var waText=encodeURIComponent(shareText);
+  var m=document.createElement('div');
+  m.id='share-modal';
+  m.style.cssText='position:fixed;left:0;right:0;bottom:0;top:0;z-index:99999;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
+  var inner=document.createElement('div');
+  inner.style.cssText='background:#1e293b;border-radius:20px;padding:24px;width:100%;max-width:360px;box-sizing:border-box;';
+  inner.innerHTML='<div style="color:#fff;font-family:Nunito,sans-serif;font-size:18px;font-weight:900;margin-bottom:12px;">Share Your Progress</div>'
+    +'<div style="color:#94a3b8;font-size:12px;margin-bottom:16px;white-space:pre-wrap;line-height:1.6;background:#0f172a;padding:12px;border-radius:10px;word-break:break-word;">'+shareText+'</div>'
+    +'<a id="wa-link" href="https://wa.me/?text='+waText+'" target="_blank" rel="noopener noreferrer" style="display:block;width:100%;padding:14px;border-radius:14px;background:#25D366;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:10px;">Share on WhatsApp</a>'
+    +'<button id="shr-copy" style="display:block;width:100%;padding:14px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;box-sizing:border-box;">Copy Text</button>'
+    +'<button id="shr-cls" style="display:block;width:100%;padding:13px;border:2px solid rgba(255,255,255,0.2);border-radius:14px;background:transparent;color:#fff;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-sizing:border-box;">Close</button>';
+  m.appendChild(inner);
+  document.body.appendChild(m);
+  document.getElementById('shr-cls').onclick=function(){
+    var el=document.getElementById('share-modal');
+    if(el)document.body.removeChild(el);
+  };
+  document.getElementById('shr-copy').onclick=function(){
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(shareText).then(function(){showToast('Copied! Paste anywhere.');});
+      }else{
+        var ta=document.createElement('textarea');
+        ta.value=shareText;
+        ta.style.cssText='position:fixed;top:0;left:0;opacity:0;';
+        document.body.appendChild(ta);
+        ta.focus();ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Copied!');
+      }
+    }catch(e){showToast('Tap and hold text to copy manually');}
+  };
+}
 
 window.openFeedback=function(){window.location.href='https://forms.gle/sR8nKajRvRbcjR3RA';};
 
+window.generateAndShare=function(type){
+  var li=lvlInfo();
+  var c=document.createElement('canvas');c.width=1080;c.height=1080;
+  var x=c.getContext('2d');
+  if(type==='weekly'){
+    var g=x.createLinearGradient(0,0,1080,1080);g.addColorStop(0,'#4f46e5');g.addColorStop(1,'#7c3aed');
+    x.fillStyle=g;x.fillRect(0,0,1080,1080);
+    x.fillStyle='rgba(255,255,255,0.85)';x.font='bold 44px Arial';x.textAlign='left';x.fillText('BulkUp',80,105);
+    x.fillStyle='rgba(255,255,255,0.55)';x.font='32px Arial';x.fillText('Weekly Summary',80,155);
+    x.fillStyle='#fff';x.font='bold 74px Arial';x.fillText(user.name||'Champion',80,270);
+    [{l:'Workouts',v:String(gs.weeklyWoCount||0)},{l:'Streak',v:String(gs.streak||0)+'wk'},{l:'XP',v:String(gs.weeklyPts||0)},{l:'Rank',v:myRank()>0?'#'+myRank():'-'}].forEach(function(s,i){var col=i%2,row=Math.floor(i/2),px=80+col*520,py=360+row*230;x.fillStyle='rgba(255,255,255,0.13)';x.fillRect(px,py,490,190);x.fillStyle='#fff';x.font='bold 72px Arial';x.textAlign='left';x.fillText(s.v,px+26,py+128);x.fillStyle='rgba(255,255,255,0.6)';x.font='30px Arial';x.fillText(s.l,px+26,py+172);});
+    x.fillStyle='rgba(255,255,255,0.3)';x.font='26px Arial';x.textAlign='right';x.fillText('getbulkup.netlify.app',1000,1058);
+  }else{
+    var g2=x.createLinearGradient(0,0,0,1080);g2.addColorStop(0,'#0f172a');g2.addColorStop(1,'#1e293b');x.fillStyle=g2;x.fillRect(0,0,1080,1080);
+    var g3=x.createLinearGradient(0,0,1080,0);g3.addColorStop(0,'#4f46e5');g3.addColorStop(1,'#22c55e');x.fillStyle=g3;x.fillRect(0,0,1080,8);
+    x.fillStyle='rgba(255,255,255,0.5)';x.font='bold 36px Arial';x.textAlign='left';x.fillText('BulkUp',80,92);
+    x.beginPath();x.arc(540,205,95,0,Math.PI*2);x.fillStyle='#4f46e5';x.fill();
+    x.font='74px Arial';x.textAlign='center';x.fillText(user.avatar||'💪',540,235);
+    x.fillStyle='#fff';x.font='bold 70px Arial';x.fillText(user.name||'Champion',540,368);
+    x.fillStyle='#a5b4fc';x.font='38px Arial';x.fillText('Level '+li.level+' - '+li.title,540,422);
+    x.fillStyle='rgba(255,255,255,0.1)';x.fillRect(100,455,880,22);
+    x.fillStyle='#4f46e5';x.fillRect(100,455,Math.round(880*(li.pct/100)),22);
+    x.fillStyle='rgba(255,255,255,0.4)';x.font='24px Arial';x.fillText(gs.xp+' XP - '+li.pct+'%',540,508);
+    [{l:'Workouts',v:String(gs.totalWo||0),c:'#22c55e'},{l:'Streak',v:String(gs.streak||0)+'wk',c:'#f97316'},{l:'Rank',v:myRank()>0?'#'+myRank():'-',c:'#eab308'},{l:'Habits',v:String(gs.habitStreak||0)+'d',c:'#a855f7'}].forEach(function(s,i){var px=100+i*220,py=545;x.fillStyle='rgba(255,255,255,0.07)';x.fillRect(px,py,200,165);x.fillStyle=s.c;x.font='bold 58px Arial';x.textAlign='center';x.fillText(s.v,px+100,py+92);x.fillStyle='rgba(255,255,255,0.5)';x.font='25px Arial';x.fillText(s.l,px+100,py+140);});
+    x.fillStyle='rgba(255,255,255,0.2)';x.font='24px Arial';x.textAlign='center';x.fillText('getbulkup.netlify.app',540,1058);
+  }
+  var dataUrl=c.toDataURL('image/png');
+  var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+  var img=document.createElement('img');img.src=dataUrl;img.style.cssText='max-width:100%;max-height:50vh;border-radius:16px;display:block;';
+  var tip=document.createElement('p');tip.style.cssText='color:#fff;font-size:12px;margin:10px 0 8px;text-align:center;opacity:0.8;';tip.textContent='Long-press image to Save then share';
+  var sb=document.createElement('a');sb.href='#';sb.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border-radius:14px;background:#4f46e5;color:#fff;font-size:14px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:8px;';sb.textContent='Share to Any App';
+  sb.onclick=function(e){e.preventDefault();c.toBlob(function(blob){if(!blob)return;var file=new File([blob],'bulkup.png',{type:'image/png'});if(navigator.share){var p=navigator.canShare&&navigator.canShare({files:[file]})?navigator.share({files:[file],title:'BulkUp'}):navigator.share({title:'BulkUp',text:'getbulkup.netlify.app'});p.catch(function(){});}else{showToast('Long-press image to save');};},'image/png');};
+  var waText=encodeURIComponent(type==='weekly'?'BulkUp Weekly!
+Workouts:'+(gs.weeklyWoCount||0)+'
+Streak:'+gs.streak+'wk
+XP:'+gs.weeklyPts+'
+getbulkup.netlify.app':'BulkUp Profile!
+'+user.name+'
+Level '+li.level+'
+Workouts:'+gs.totalWo+'
+XP:'+gs.xp+'
+getbulkup.netlify.app');
+  var wa=document.createElement('a');wa.href='https://wa.me/?text='+waText;wa.target='_blank';wa.rel='noopener';wa.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-size:14px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:8px;';wa.textContent='WhatsApp';
+  var cl=document.createElement('a');cl.href='#';cl.onclick=function(e){e.preventDefault();document.body.removeChild(ov);};cl.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border:2px solid rgba(255,255,255,0.3);border-radius:14px;color:#fff;font-size:14px;font-weight:700;text-align:center;text-decoration:none;box-sizing:border-box;';cl.textContent='Close';
+  ov.appendChild(img);ov.appendChild(tip);ov.appendChild(sb);ov.appendChild(wa);ov.appendChild(cl);document.body.appendChild(ov);
+};
 </script>
 
 <style>
@@ -1947,15 +1910,15 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
         <div class="card-title" style="margin-bottom:10px;">📤 Share Your Progress</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:11px;">Generate a card to share on Instagram or WhatsApp</div>
         <div style="display:flex;gap:8px;">
-          <span onclick="generateAndShare('weekly')" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-align:center;display:block;-webkit-tap-highlight-color:rgba(0,0,0,0.1);">📊 Weekly Stats</span>
-          <span onclick="generateAndShare('profile')" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-align:center;display:block;-webkit-tap-highlight-color:rgba(0,0,0,0.1);">🏆 Full Profile</span>
+          <span onclick="generateAndShare('weekly')" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-align:center;display:block;">📊 Weekly Stats</span>
+          <span onclick="generateAndShare('profile')" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-align:center;display:block;">🏆 Full Profile</span>
         </div>
       </div>
 
       <div class="settings-list">
         <div class="sl-item" onclick="switchTab('progress')"><div class="sl-icon" style="background:var(--gl);">📈</div><div class="sl-lbl">View Progress</div><div class="sl-arrow">›</div></div>
         <div class="sl-item" onclick="switchTab('leaderboard')"><div class="sl-icon" style="background:var(--yl);">🏆</div><div class="sl-lbl">Live Leaderboard</div><div class="sl-arrow">›</div></div>
-        <a href="#" onclick="enableNotifications();return false;" style="text-decoration:none;color:inherit;display:block;"><div class="sl-item" id="notif-btn"><div class="sl-icon" style="background:var(--pl);">🔔</div><div class="sl-lbl">Enable Notifications</div><div class="sl-arrow">›</div></div></a>
+        <a href="javascript:void(0)" onclick="enableNotifications()" style="text-decoration:none;color:inherit;display:block;"><div class="sl-item" id="notif-btn"><div class="sl-icon" style="background:var(--pl);">🔔</div><div class="sl-lbl">Enable Notifications</div><div class="sl-arrow">›</div></div></a>
         <a href="https://forms.gle/sR8nKajRvRbcjR3RA" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;"><div class="sl-item"><div class="sl-icon" style="background:#dcfce7;">💬</div><div class="sl-lbl">Send Feedback</div><div class="sl-arrow">›</div></div></a>
         <div class="sl-item" onclick="doLogout()"><div class="sl-icon" style="background:var(--rl);">🚪</div><div class="sl-lbl" style="color:var(--red);">Sign Out</div><div class="sl-arrow">›</div></div>
       </div>
