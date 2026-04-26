@@ -324,7 +324,7 @@ window.obNext=async function(step){
   }
   if(step===4){if(!obLevel){e.textContent='Pick one!';return;}user.level=obLevel;}
   g('obs'+step).classList.remove('show');obStep=step+1;
-  if(obStep===5){g('ob-fn').textContent=user.name;g('ob-fp').textContent=`Daily target: ${user.calories} kcal · ${user.protein}g protein 💪`;}
+  if(obStep===5){/* notification step */}if(obStep===6){g('ob-fn').textContent=user.name;g('ob-fp').textContent=`Daily target: ${user.calories} kcal · ${user.protein}g protein 💪`;}
   g('obs'+obStep).classList.add('show');renderObProg();
 };
 window.pickOb=function(el,g2){document.querySelectorAll(`#ob-${g2}-grid .ob-opt`).forEach(e=>e.classList.remove('sel'));el.classList.add('sel');if(g2==='lvl')obLevel=el.dataset.v;};
@@ -1030,14 +1030,11 @@ async function requestNotifPermission(){
 
 function scheduleNotifications(){
   if(typeof Notification==='undefined'||!('Notification' in window)||Notification.permission!=='granted')return;
+  // Clear any existing scheduled checks
   if(window._notifTimer)clearInterval(window._notifTimer);
-  // Fire immediately on load, then check every hour
-  checkAndNotify();
-  window._notifTimer=setInterval(checkAndNotify, 60*60*1000);
-  // Also use visibility change to fire when user returns to app
-  document.addEventListener('visibilitychange',function(){
-    if(document.visibilityState==='visible')checkAndNotify();
-  });
+  // Check every 5 minutes if we should fire a notification
+  window._notifTimer=setInterval(checkAndNotify, 5*60*1000);
+  checkAndNotify(); // also check immediately on load
 }
 
 function checkAndNotify(){
@@ -1104,157 +1101,202 @@ function fireNotif(title,body,url){
   }catch(e){console.warn('Notif error:',e);}
 }
 
+// ── obEnableNotif: called from onboarding notification step ──────────────
+window.obEnableNotif=function(){
+  var btn=document.getElementById('ob-notif-btn');
+  if(btn){btn.textContent='Requesting...';btn.disabled=true;}
+  if(typeof Notification==='undefined'){
+    showToast('Notifications not supported in this browser');
+    setTimeout(function(){
+      var s=document.getElementById('obs5');if(s)s.classList.remove('show');
+      var s6=document.getElementById('obs6');if(s6)s6.classList.add('show');
+      renderObProg();
+    },500);
+    return;
+  }
+  Notification.requestPermission().then(function(p){
+    if(p==='granted'){
+      gs.notifsEnabled=true;
+      scheduleNotifications();
+      showToast('🔔 Notifications enabled!');
+    }
+    // Move to next step regardless
+    var s=document.getElementById('obs5');if(s)s.classList.remove('show');
+    var s6=document.getElementById('obs6');if(s6)s6.classList.add('show');
+    renderObProg();
+  }).catch(function(){
+    var s=document.getElementById('obs5');if(s)s.classList.remove('show');
+    var s6=document.getElementById('obs6');if(s6)s6.classList.add('show');
+    renderObProg();
+  });
+};
+
+// ── enableNotifications: profile button ──────────────────────────────────
 window.enableNotifications=function(){
-  var btn=g('notif-btn');
+  var btn=document.getElementById('notif-btn');
   var lbl=btn?btn.querySelector('.sl-lbl'):null;
-  // Show modal immediately — guaranteed visible
-  var m=document.createElement('div');
-  m.id='notif-modal';
-  m.style.cssText='position:fixed;left:0;right:0;bottom:0;top:0;z-index:99999;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;justify-content:center;';
-  var inner=document.createElement('div');
-  inner.style.cssText='background:#fff;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;';
-  inner.innerHTML='<div style="font-family:Nunito,sans-serif;font-size:20px;font-weight:900;margin-bottom:6px;">Enable Notifications</div>'
-    +'<div id="ns" style="background:#f0f4ff;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;color:#1e293b;line-height:1.8;">Get daily reminders to stay consistent!</div>'
-    +'<button id="nr" style="display:block;width:100%;padding:15px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;box-sizing:border-box;">Enable Now</button>'
-    +'<button id="nc" style="display:block;width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-sizing:border-box;">Close</button>';
-  m.appendChild(inner);
-  document.body.appendChild(m);
-  document.getElementById('nc').onclick=function(){
-    var el=document.getElementById('notif-modal');
-    if(el)document.body.removeChild(el);
-  };
-  document.getElementById('nr').onclick=function(){
-    var s=document.getElementById('ns');
-    var el=document.getElementById('notif-modal');
-    if(typeof Notification==='undefined'){
-      s.textContent='Not supported in this browser. Try Chrome.';
-      s.style.color='#ef4444';
-      return;
+  if(typeof Notification==='undefined'){
+    showToast('Notifications not supported. Use Chrome browser.');
+    return;
+  }
+  if(Notification.permission==='granted'){
+    gs.notifsEnabled=true;saveFS();scheduleNotifications();
+    if(lbl)lbl.textContent='Notifications On ✅';
+    showToast('🔔 Notifications already enabled!');
+    return;
+  }
+  if(Notification.permission==='denied'){
+    showToast('Blocked! Chrome ⋮ → Settings → Site Settings → Notifications → Allow');
+    return;
+  }
+  Notification.requestPermission().then(function(p){
+    if(p==='granted'){
+      gs.notifsEnabled=true;saveFS();scheduleNotifications();
+      if(lbl)lbl.textContent='Notifications On ✅';
+      if(btn)btn.style.background='#f0fdf4';
+      showToast('🔔 Notifications enabled!');
+      try{new Notification('BulkUp 💪',{body:'Daily reminders are ON! Stay consistent 🔥',icon:'/icon-192.png'});}catch(e){}
+    }else{
+      showToast('Notifications denied. Enable from Chrome Settings.');
     }
-    if(Notification.permission==='granted'){
-      if(lbl)lbl.textContent='On';
-      if(el)document.body.removeChild(el);
-      showToast('Notifications already enabled!');
-      return;
-    }
-    if(Notification.permission==='denied'){
-      s.innerHTML='Blocked by browser.<br>Fix: Chrome menu (3 dots) > Settings > Site Settings > Notifications > find getbulkup.netlify.app > Allow';
-      s.style.color='#ef4444';
-      return;
-    }
-    Notification.requestPermission().then(function(p){
-      if(p==='granted'){
-        if(lbl)lbl.textContent='On';
-        if(btn)btn.style.background='#f0fdf4';
-        if(el)document.body.removeChild(el);
-        showToast('Notifications enabled!');
-      }else{
-        s.textContent='Permission denied. Go to Chrome Settings > Site Settings > Notifications > Allow.';
-        s.style.color='#ef4444';
-      }
-    });
-  };
+  });
 };
 
-window.shareWeeklyCard=function(){
-  var li=lvlInfo();
-  var txt='My BulkUp Weekly Stats!'
-    +'\nWorkouts this week: '+(gs.weeklyWoCount||0)
-    +'\nStreak: '+gs.streak+' weeks'
-    +'\nXP earned: '+gs.weeklyPts
-    +'\nRank: '+(myRank()>0?'#'+myRank():'-')
-    +'\nJoin me: getbulkup.netlify.app';
-  showShareModal(txt);
-};
-
-window.shareProfileCard=function(){
-  var li=lvlInfo();
-  var txt='My BulkUp Profile!'
-    +'\nName: '+user.name
-    +'\nLevel: '+li.level+' ('+li.title+')'
-    +'\nTotal Workouts: '+gs.totalWo
-    +'\nStreak: '+gs.streak+' weeks'
-    +'\nXP: '+gs.xp
-    +'\nJoin me: getbulkup.netlify.app';
-  showShareModal(txt);
-};
-
-function showShareModal(shareText){
-  var waText=encodeURIComponent(shareText);
-  var m=document.createElement('div');
-  m.id='share-modal';
-  m.style.cssText='position:fixed;left:0;right:0;bottom:0;top:0;z-index:99999;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
-  var inner=document.createElement('div');
-  inner.style.cssText='background:#1e293b;border-radius:20px;padding:24px;width:100%;max-width:360px;box-sizing:border-box;';
-  inner.innerHTML='<div style="color:#fff;font-family:Nunito,sans-serif;font-size:18px;font-weight:900;margin-bottom:12px;">Share Your Progress</div>'
-    +'<div style="color:#94a3b8;font-size:12px;margin-bottom:16px;white-space:pre-wrap;line-height:1.6;background:#0f172a;padding:12px;border-radius:10px;word-break:break-word;">'+shareText+'</div>'
-    +'<a id="wa-link" href="https://wa.me/?text='+waText+'" target="_blank" rel="noopener noreferrer" style="display:block;width:100%;padding:14px;border-radius:14px;background:#25D366;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:10px;">Share on WhatsApp</a>'
-    +'<button id="shr-copy" style="display:block;width:100%;padding:14px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;box-sizing:border-box;">Copy Text</button>'
-    +'<button id="shr-cls" style="display:block;width:100%;padding:13px;border:2px solid rgba(255,255,255,0.2);border-radius:14px;background:transparent;color:#fff;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-sizing:border-box;">Close</button>';
-  m.appendChild(inner);
-  document.body.appendChild(m);
-  document.getElementById('shr-cls').onclick=function(){
-    var el=document.getElementById('share-modal');
-    if(el)document.body.removeChild(el);
-  };
-  document.getElementById('shr-copy').onclick=function(){
-    try{
-      if(navigator.clipboard&&navigator.clipboard.writeText){
-        navigator.clipboard.writeText(shareText).then(function(){showToast('Copied! Paste anywhere.');});
-      }else{
-        var ta=document.createElement('textarea');
-        ta.value=shareText;
-        ta.style.cssText='position:fixed;top:0;left:0;opacity:0;';
-        document.body.appendChild(ta);
-        ta.focus();ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        showToast('Copied!');
-      }
-    }catch(e){showToast('Tap and hold text to copy manually');}
-  };
-}
-
-window.openFeedback=function(){window.location.href='https://forms.gle/sR8nKajRvRbcjR3RA';};
-
-// roundRect polyfill for older Android
-if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){r=Math.min(r,w/2,h/2);this.beginPath();this.moveTo(x+r,y);this.lineTo(x+w-r,y);this.quadraticCurveTo(x+w,y,x+w,y+r);this.lineTo(x+w,y+h-r);this.quadraticCurveTo(x+w,y+h,x+w-r,y+h);this.lineTo(x+r,y+h);this.quadraticCurveTo(x,y+h,x,y+h-r);this.lineTo(x,y+r);this.quadraticCurveTo(x,y,x+r,y);this.closePath();return this;};}
-
+// ── generateAndShare: generates canvas card and shows share overlay ───────
 window.generateAndShare=function(type){
   var li=lvlInfo();
-  var c=document.createElement('canvas');c.width=1080;c.height=1080;
-  var ctx=c.getContext('2d');
+  var canvas=document.createElement('canvas');
+  canvas.width=1080;canvas.height=1080;
+  var ctx=canvas.getContext('2d');
+
   if(type==='weekly'){
-    var g1=ctx.createLinearGradient(0,0,1080,1080);g1.addColorStop(0,'#4f46e5');g1.addColorStop(1,'#7c3aed');ctx.fillStyle=g1;ctx.fillRect(0,0,1080,1080);
-    ctx.fillStyle='rgba(255,255,255,0.8)';ctx.font='bold 40px Arial';ctx.textAlign='left';ctx.fillText('BulkUp',80,100);
-    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='30px Arial';ctx.fillText('Weekly Summary',80,150);
-    ctx.fillStyle='#fff';ctx.font='bold 72px Arial';ctx.fillText(user.name||'Champion',80,260);
-    [{l:'Workouts',v:String(gs.weeklyWoCount||0)},{l:'Streak',v:String(gs.streak||0)+'wk'},{l:'XP',v:String(gs.weeklyPts||0)},{l:'Rank',v:myRank()>0?'#'+myRank():'-'}].forEach(function(s,i){var x=80+(i%2)*520,y=340+Math.floor(i/2)*220;ctx.fillStyle='rgba(255,255,255,0.12)';ctx.fillRect(x,y,480,180);ctx.fillStyle='#fff';ctx.font='bold 70px Arial';ctx.textAlign='left';ctx.fillText(s.v,x+24,y+120);ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='28px Arial';ctx.fillText(s.l,x+24,y+160);});
-    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='26px Arial';ctx.textAlign='right';ctx.fillText('getbulkup.netlify.app',1000,1055);
-  }else{
-    var g2=ctx.createLinearGradient(0,0,0,1080);g2.addColorStop(0,'#0f172a');g2.addColorStop(1,'#1e293b');ctx.fillStyle=g2;ctx.fillRect(0,0,1080,1080);
-    var g3=ctx.createLinearGradient(0,0,1080,0);g3.addColorStop(0,'#4f46e5');g3.addColorStop(1,'#22c55e');ctx.fillStyle=g3;ctx.fillRect(0,0,1080,8);
-    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='bold 34px Arial';ctx.textAlign='left';ctx.fillText('BulkUp',80,90);
-    ctx.beginPath();ctx.arc(540,200,90,0,Math.PI*2);ctx.fillStyle='#4f46e5';ctx.fill();
-    ctx.font='70px Arial';ctx.textAlign='center';ctx.fillText(user.avatar||'💪',540,228);
-    ctx.fillStyle='#fff';ctx.font='bold 68px Arial';ctx.fillText(user.name||'Champion',540,360);
-    ctx.fillStyle='#a5b4fc';ctx.font='36px Arial';ctx.fillText('Level '+li.level+' - '+li.title,540,415);
-    ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fillRect(100,450,880,22);ctx.fillStyle='#4f46e5';ctx.fillRect(100,450,Math.round(880*(li.pct/100)),22);
-    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='24px Arial';ctx.fillText(gs.xp+' XP - '+li.pct+'% to next',540,504);
-    [{l:'Workouts',v:String(gs.totalWo||0),c:'#22c55e'},{l:'Streak',v:String(gs.streak||0)+'wk',c:'#f97316'},{l:'Rank',v:myRank()>0?'#'+myRank():'-',c:'#eab308'},{l:'Habits',v:String(gs.habitStreak||0)+'d',c:'#a855f7'}].forEach(function(s,i){var x=100+i*220,y=540;ctx.fillStyle='rgba(255,255,255,0.07)';ctx.fillRect(x,y,200,160);ctx.fillStyle=s.c;ctx.font='bold 56px Arial';ctx.textAlign='center';ctx.fillText(s.v,x+100,y+88);ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='24px Arial';ctx.fillText(s.l,x+100,y+136);});
-    ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font='24px Arial';ctx.textAlign='center';ctx.fillText('getbulkup.netlify.app',540,1055);
+    var g1=ctx.createLinearGradient(0,0,1080,1080);
+    g1.addColorStop(0,'#4f46e5');g1.addColorStop(1,'#7c3aed');
+    ctx.fillStyle=g1;ctx.fillRect(0,0,1080,1080);
+    ctx.beginPath();ctx.arc(950,130,220,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.07)';ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.85)';
+    ctx.font='bold 44px Arial';ctx.textAlign='left';
+    ctx.fillText('BulkUp',80,105);
+    ctx.fillStyle='rgba(255,255,255,0.55)';
+    ctx.font='32px Arial';ctx.fillText('Weekly Summary',80,155);
+    ctx.fillStyle='#fff';ctx.font='bold 74px Arial';
+    ctx.fillText(user.name||'Champion',80,270);
+    var stats=[
+      {l:'Workouts',v:String(gs.weeklyWoCount||0)},
+      {l:'Streak',v:String(gs.streak||0)+'wk'},
+      {l:'Weekly XP',v:String(gs.weeklyPts||0)},
+      {l:'Rank',v:myRank()>0?'#'+myRank():'-'}
+    ];
+    stats.forEach(function(s,i){
+      var col=i%2,row=Math.floor(i/2),x=80+col*520,y=360+row*230;
+      ctx.fillStyle='rgba(255,255,255,0.13)';
+      ctx.fillRect(x,y,490,190);
+      ctx.fillStyle='#fff';ctx.font='bold 72px Arial';ctx.textAlign='left';
+      ctx.fillText(s.v,x+26,y+128);
+      ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='30px Arial';
+      ctx.fillText(s.l,x+26,y+172);
+    });
+    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='26px Arial';
+    ctx.textAlign='right';ctx.fillText('getbulkup.netlify.app',1000,1058);
+  } else {
+    var g2=ctx.createLinearGradient(0,0,0,1080);
+    g2.addColorStop(0,'#0f172a');g2.addColorStop(1,'#1e293b');
+    ctx.fillStyle=g2;ctx.fillRect(0,0,1080,1080);
+    var g3=ctx.createLinearGradient(0,0,1080,0);
+    g3.addColorStop(0,'#4f46e5');g3.addColorStop(1,'#22c55e');
+    ctx.fillStyle=g3;ctx.fillRect(0,0,1080,8);
+    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='bold 36px Arial';
+    ctx.textAlign='left';ctx.fillText('BulkUp',80,92);
+    ctx.beginPath();ctx.arc(540,205,95,0,Math.PI*2);
+    ctx.fillStyle='#4f46e5';ctx.fill();
+    ctx.font='74px Arial';ctx.textAlign='center';
+    ctx.fillText(user.avatar||'💪',540,235);
+    ctx.fillStyle='#fff';ctx.font='bold 70px Arial';
+    ctx.fillText(user.name||'Champion',540,368);
+    ctx.fillStyle='#a5b4fc';ctx.font='38px Arial';
+    ctx.fillText('Level '+li.level+' · '+li.title,540,422);
+    ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fillRect(100,455,880,22);
+    ctx.fillStyle='#4f46e5';ctx.fillRect(100,455,Math.round(880*(li.pct/100)),22);
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='24px Arial';
+    ctx.fillText(gs.xp+' XP · '+li.pct+'% to next level',540,508);
+    var stats2=[
+      {l:'Workouts',v:String(gs.totalWo||0),c:'#22c55e'},
+      {l:'Streak',v:String(gs.streak||0)+'wk',c:'#f97316'},
+      {l:'Rank',v:myRank()>0?'#'+myRank():'-',c:'#eab308'},
+      {l:'Habits',v:String(gs.habitStreak||0)+'d',c:'#a855f7'}
+    ];
+    stats2.forEach(function(s,i){
+      var x=100+i*220,y=545;
+      ctx.fillStyle='rgba(255,255,255,0.07)';ctx.fillRect(x,y,200,165);
+      ctx.fillStyle=s.c;ctx.font='bold 58px Arial';ctx.textAlign='center';
+      ctx.fillText(s.v,x+100,y+92);
+      ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='25px Arial';
+      ctx.fillText(s.l,x+100,y+140);
+    });
+    ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font='24px Arial';ctx.textAlign='center';
+    ctx.fillText('getbulkup.netlify.app',540,1058);
   }
-  var dataUrl=c.toDataURL('image/png');
-  var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
-  var img=document.createElement('img');img.src=dataUrl;img.style.cssText='max-width:100%;max-height:52vh;border-radius:16px;display:block;';
-  var tip=document.createElement('p');tip.style.cssText='color:#fff;font-size:12px;font-weight:700;margin:10px 0 8px;text-align:center;';tip.textContent='Long-press image to Save, then share anywhere';
-  var sb=document.createElement('button');sb.textContent='Share to Any App';sb.style.cssText='width:100%;max-width:340px;padding:13px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-size:14px;font-weight:900;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';
-  sb.onclick=function(){c.toBlob(function(blob){if(!blob)return;var f=new File([blob],'bulkup.png',{type:'image/png'});if(navigator.share){var p=navigator.canShare&&navigator.canShare({files:[f]})?navigator.share({files:[f],title:'BulkUp',text:'getbulkup.netlify.app'}):navigator.share({title:'BulkUp',text:'Check my BulkUp stats! getbulkup.netlify.app'});p.catch(function(e){if(e.name!=='AbortError')showToast('Long-press image to share');});}else{showToast('Long-press image to save and share');}});};
-  var wt=encodeURIComponent(type==='weekly'?'BulkUp Weekly: Workouts '+(gs.weeklyWoCount||0)+', Streak '+gs.streak+'wk, XP '+gs.weeklyPts+' getbulkup.netlify.app':'BulkUp Profile: '+user.name+', Level '+li.level+', Workouts '+gs.totalWo+', XP '+gs.xp+' getbulkup.netlify.app');
-  var wa=document.createElement('a');wa.href='https://wa.me/?text='+wt;wa.target='_blank';wa.rel='noopener';wa.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-size:14px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:8px;';wa.textContent='WhatsApp';
-  var cl=document.createElement('button');cl.textContent='Close';cl.style.cssText='width:100%;max-width:340px;padding:13px;border:2px solid rgba(255,255,255,0.3);border-radius:14px;background:transparent;color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-sizing:border-box;';cl.onclick=function(){document.body.removeChild(ov);};
-  ov.appendChild(img);ov.appendChild(tip);ov.appendChild(sb);ov.appendChild(wa);ov.appendChild(cl);document.body.appendChild(ov);
+
+  // Show card in fullscreen overlay
+  var dataUrl=canvas.toDataURL('image/png');
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+  var img=document.createElement('img');
+  img.src=dataUrl;
+  img.style.cssText='max-width:100%;max-height:50vh;border-radius:16px;display:block;';
+  var tip=document.createElement('p');
+  tip.style.cssText='color:#fff;font-size:12px;margin:10px 0 8px;text-align:center;opacity:0.8;';
+  tip.textContent='Long-press image → Save to Gallery → Share anywhere';
+  // Native share button
+  var sb=document.createElement('a');
+  sb.href='#';
+  sb.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border-radius:14px;background:#4f46e5;color:#fff;font-size:14px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:8px;';
+  sb.textContent='📤 Share to Any App';
+  sb.onclick=function(e){
+    e.preventDefault();
+    canvas.toBlob(function(blob){
+      if(!blob){showToast('Long-press image to save');return;}
+      var file=new File([blob],'bulkup-'+type+'.png',{type:'image/png'});
+      if(navigator.share){
+        var data=navigator.canShare&&navigator.canShare({files:[file]})
+          ?{files:[file],title:'BulkUp Progress',text:'My BulkUp stats! getbulkup.netlify.app'}
+          :{title:'BulkUp Progress',text:'My BulkUp stats! getbulkup.netlify.app'};
+        navigator.share(data).catch(function(e){
+          if(e.name!=='AbortError')showToast('Long-press image to save and share');
+        });
+      }else{showToast('Long-press the image above to save');}
+    },'image/png');
+    return false;
+  };
+  // WhatsApp direct
+  var waText=encodeURIComponent(type==='weekly'
+    ?'My BulkUp Weekly Stats!
+Workouts: '+(gs.weeklyWoCount||0)+'
+Streak: '+gs.streak+'wk
+XP: '+gs.weeklyPts+'
+getbulkup.netlify.app'
+    :'My BulkUp Profile!
+'+user.name+'
+Level '+(lvlInfo().level)+'
+Workouts: '+gs.totalWo+'
+XP: '+gs.xp+'
+getbulkup.netlify.app');
+  var wa=document.createElement('a');
+  wa.href='https://wa.me/?text='+waText;
+  wa.target='_blank';wa.rel='noopener';
+  wa.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-size:14px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:8px;';
+  wa.textContent='💚 Share on WhatsApp';
+  var cl=document.createElement('a');
+  cl.href='#';
+  cl.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border:2px solid rgba(255,255,255,0.3);border-radius:14px;color:#fff;font-size:14px;font-weight:700;text-align:center;text-decoration:none;box-sizing:border-box;';
+  cl.textContent='✕ Close';
+  cl.onclick=function(e){e.preventDefault();document.body.removeChild(ov);return false;};
+  ov.appendChild(img);ov.appendChild(tip);ov.appendChild(sb);ov.appendChild(wa);ov.appendChild(cl);
+  document.body.appendChild(ov);
 };
+
+window.openFeedback=function(){window.location.href='https://forms.gle/sR8nKajRvRbcjR3RA';};
 
 </script>
 
@@ -1702,7 +1744,14 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       <div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.05em;">Monthly Food Budget</div><div class="ob-grid" id="ob-budget-grid" style="grid-template-columns:repeat(3,1fr);"><div class="ob-opt" data-v="low" onclick="pickOb(this,'budget')"><div class="oi">💸</div><div class="ol">Under ₹3k</div></div><div class="ob-opt" data-v="mid" onclick="pickOb(this,'budget')"><div class="oi">💰</div><div class="ol">₹3k–6k</div></div><div class="ob-opt" data-v="high" onclick="pickOb(this,'budget')"><div class="oi">🤑</div><div class="ol">₹6k+</div></div></div></div>
       <div class="ob-err" id="ob-e3"></div><button class="ob-btn" onclick="obNext(3)">Continue →</button></div>
     <div class="ob-step" id="obs4"><div class="ob-emoji">🎯</div><div class="ob-h">Where are you <em>right now?</em></div><div class="ob-p">Pick the one that sounds like you.</div><div class="ob-grid" id="ob-lvl-grid"><div class="ob-opt" data-v="Never worked out" onclick="pickOb(this,'lvl')"><div class="oi">🧍</div><div class="ol">Never worked out</div></div><div class="ob-opt" data-v="Sometimes workout" onclick="pickOb(this,'lvl')"><div class="oi">🏃</div><div class="ol">Sometimes workout</div></div><div class="ob-opt" data-v="Few months in" onclick="pickOb(this,'lvl')"><div class="oi">💪</div><div class="ol">Few months in</div></div><div class="ob-opt" data-v="Not gaining weight" onclick="pickOb(this,'lvl')"><div class="oi">😤</div><div class="ol">Not gaining weight</div></div></div><div class="ob-err" id="ob-e4"></div><button class="ob-btn" onclick="obNext(4)">Continue →</button></div>
-    <div class="ob-step" id="obs5"><div class="ob-emoji">🚀</div><div class="ob-h">You're in, <em id="ob-fn">champ</em>!</div><div class="ob-p" id="ob-fp">Your plan is ready!</div><button class="ob-btn g" onclick="enterApp()">Open My Plan 🚀</button></div>
+    <div class="ob-step" id="obs5">
+  <div class="ob-emoji">🔔</div>
+  <div class="ob-h">Stay <em>Consistent</em></div>
+  <div class="ob-p">Enable notifications to get daily workout reminders and streak alerts.</div>
+  <button class="ob-btn g" id="ob-notif-btn" onclick="obEnableNotif()">🔔 Enable Reminders</button>
+  <button class="ob-btn" style="margin-top:10px;background:rgba(0,0,0,0.07);color:var(--text);" onclick="enterApp()">Skip for now</button>
+</div>
+<div class="ob-step" id="obs6"><div class="ob-emoji">🚀</div><div class="ob-h">You're in, <em id="ob-fn">champ</em>!</div><div class="ob-p" id="ob-fp">Your plan is ready!</div><button class="ob-btn g" onclick="enterApp()">Open My Plan 🚀</button></div>
   </div>
 </div>
 
@@ -1907,8 +1956,8 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
         <div class="card-title" style="margin-bottom:10px;">📤 Share Your Progress</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:11px;">Generate a card to share on Instagram or WhatsApp</div>
         <div style="display:flex;gap:8px;">
-          <a onclick="generateAndShare('weekly');return false;" href="#" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-align:center;text-decoration:none;display:block;">📊 Weekly Stats</a>
-          <a onclick="generateAndShare('profile');return false;" href="#" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-align:center;text-decoration:none;display:block;">🏆 Full Profile</a>
+          <a href="#" onclick="generateAndShare('weekly');return false;" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-decoration:none;text-align:center;display:block;">📊 Weekly Stats</a>
+          <a href="#" onclick="generateAndShare('profile');return false;" style="flex:1;padding:12px 8px;border-radius:13px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;text-decoration:none;text-align:center;display:block;">🏆 Full Profile</a>
         </div>
       </div>
 
