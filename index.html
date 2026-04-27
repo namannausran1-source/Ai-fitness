@@ -1245,16 +1245,7 @@ window.generateAndShare=function(type){
   var tip=document.createElement('p');tip.style.cssText='color:#fff;font-size:12px;margin:10px 0 8px;text-align:center;opacity:0.8;';tip.textContent='Long-press image to Save then share';
   var sb=document.createElement('a');sb.href='#';sb.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border-radius:14px;background:#4f46e5;color:#fff;font-size:14px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:8px;';sb.textContent='Share to Any App';
   sb.onclick=function(e){e.preventDefault();c.toBlob(function(blob){if(!blob)return;var file=new File([blob],'bulkup.png',{type:'image/png'});if(navigator.share){var p=navigator.canShare&&navigator.canShare({files:[file]})?navigator.share({files:[file],title:'BulkUp'}):navigator.share({title:'BulkUp',text:'getbulkup.netlify.app'});p.catch(function(){});}else{showToast('Long-press image to save');};},'image/png');};
-  var waText=encodeURIComponent(type==='weekly'?'BulkUp Weekly!
-Workouts:'+(gs.weeklyWoCount||0)+'
-Streak:'+gs.streak+'wk
-XP:'+gs.weeklyPts+'
-getbulkup.netlify.app':'BulkUp Profile!
-'+user.name+'
-Level '+li.level+'
-Workouts:'+gs.totalWo+'
-XP:'+gs.xp+'
-getbulkup.netlify.app');
+  var waText=encodeURIComponent(type==='weekly'?'BulkUp Weekly! Workouts:'+(gs.weeklyWoCount||0)+' Streak:'+gs.streak+'wk XP:'+gs.weeklyPts+' getbulkup.netlify.app':'BulkUp Profile! '+user.name+' Level '+li.level+' Workouts:'+gs.totalWo+' XP:'+gs.xp+' getbulkup.netlify.app');
   var wa=document.createElement('a');wa.href='https://wa.me/?text='+waText;wa.target='_blank';wa.rel='noopener';wa.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-size:14px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:8px;';wa.textContent='WhatsApp';
   var cl=document.createElement('a');cl.href='#';cl.onclick=function(e){e.preventDefault();document.body.removeChild(ov);};cl.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border:2px solid rgba(255,255,255,0.3);border-radius:14px;color:#fff;font-size:14px;font-weight:700;text-align:center;text-decoration:none;box-sizing:border-box;';cl.textContent='Close';
   ov.appendChild(img);ov.appendChild(tip);ov.appendChild(sb);ov.appendChild(wa);ov.appendChild(cl);document.body.appendChild(ov);
