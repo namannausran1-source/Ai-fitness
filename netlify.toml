@@ -1,15 +1,11 @@
 # BulkUp — Netlify config
-# Landing page serves at /
-# App serves at /app/
 
 [[redirects]]
   from = "/app"
   to = "/app/"
   status = 301
 
-# Fallback: any unmatched route goes to landing page
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-  conditions = {Role = []}
