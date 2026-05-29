@@ -686,7 +686,7 @@ function renderRecent(){
 
 /* ═══════════════════════════════════════════════════
    SECTION 15 — MEAL PLANNER
-   AI via Netlify Function /api/claude (Gemini 2.0 Flash)
+   AI via vercel serverless Function /api/get-meal-plan (Gemini 1.5 Flash)
    Beta limit: 3 lifetime generations per user.
 ═══════════════════════════════════════════════════ */
 window.fpPick=function(el,type){document.querySelectorAll(`#fp-${type}-row .chip`).forEach(c=>c.classList.remove('sel'));el.classList.add('sel');};
