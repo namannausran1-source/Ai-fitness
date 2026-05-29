@@ -2,7 +2,7 @@
 
 > The fitness app built for **hardgainers** — people who struggle to gain weight and muscle. Track workouts, calories, and protein with Duolingo-style gamification and real competitive leaderboards.
 
-🌐 **Live App:** [getbulkup.netlify.app](https://getbulkup.netlify.app)
+🌐 **Live App:** [getbulkup.vercel.app](https://getbulkup.vercel.app)
 ---
 
 ## 🚀 What is BulkUp?
