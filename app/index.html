@@ -681,7 +681,7 @@ function renderRecent(){
   el.innerHTML=recentWorkouts.map(w=>`<div class="recent-item"><div class="ri-ico" style="background:${w.bg||'var(--pl)'}">${w.icon}</div><div class="ri-inf"><div class="ri-nm">${w.nm}</div><div class="ri-meta">⏱ ${w.mins} min · 🔥 ${w.cal} kcal</div></div><div class="ri-date">${w.date}</div></div>`).join('');
 }
 
-/* ══ MEAL — SECURED VIA NETLIFY FUNCTION 🔒 ══ */
+/* ══ MEAL — SECURED VIA vercel-serverless- FUNCTION 🔒 ══ */
 
 
 /* ═══════════════════════════════════════════════════
@@ -1929,7 +1929,10 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
   </div>
 </div><!-- /page-app -->
 </div><!-- /app -->
-      <button 
+        <!-- ======================================================== -->
+  <!-- SECURE DUMMY PLAYER INJECTOR (ADMIN ONLY)                -->
+  <!-- ======================================================== -->
+  <button 
     id="devSeedBtn" 
     onclick="seedRealisticPlayers()" 
     style="display: none; position: fixed; top: 15px; left: 15px; z-index: 99999; background: #ff3333; color: white; padding: 14px 20px; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);"
@@ -1966,22 +1969,36 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 
       for (const player of realisticPlayers) {
         await firestoreDb.collection("users").add({
-          name: player.name,           
-          displayName: player.name,    
-          level: player.level,
-          points: player.pts,          
-          allTimePts: player.pts,      
-          weeklyXpPts: player.xp,
-          totalWo: player.workouts,    
+          // 1. Nested user map for Names and Levels (Matches line 285 & 547)
+          user: {
+            name: player.name,
+            level: player.level,
+            avatar: "💪"
+          },
+          
+          // 2. Nested gs map for Points (Matches line 547)
+          gs: {
+            allTimePts: player.pts,
+            weeklyPts: player.xp,
+            streak: 12,
+            challengeProgress: { habitDays: 5, proteinDays: 4, streak: 8, totalWo: player.workouts, habitStreak: 5 }
+          },
+          
+          // 3. Root fallback fields (Matches line 571)
+          totalWo: player.workouts,
           streak: 12,
+          level: player.level,
+          allTimePts: player.pts,
+          displayName: player.name,
+          
+          // Extra structural fields to maintain data integrity
+          bodyStats: { arm: "16", chest: "42" },
+          weeklyWo: [1, 0, 1, 1, 0, 1, 0],
+          workoutDates: ["27/05/2026", "29/05/2026"],
           calLogged: 4,
           mealLogsToday: 2,
           proLogged: 1,
-          lastCalDay: "31/05/2026",
-          bodyStats: { arm: "16", chest: "42" },
-          challengeProgress: { habitDays: 5, proteinDays: 4, streak: 8, totalWo: player.workouts, habitStreak: 5 },
-          weeklyWo: [1, 0, 1, 1, 0, 1, 0],
-          workoutDates: ["27/05/2026", "29/05/2026"]
+          lastCalDay: "31/05/2026"
         });
       }
       alert("Success! High-level Indian players populated perfectly.");
