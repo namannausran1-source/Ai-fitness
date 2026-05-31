@@ -1929,7 +1929,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
   </div>
 </div><!-- /page-app -->
 </div><!-- /app -->
-  <!-- ======================================================== -->
+    <!-- ======================================================== -->
   <!-- SECURE DUMMY PLAYER INJECTOR (ADMIN ONLY)                -->
   <!-- ======================================================== -->
   <button 
@@ -1941,10 +1941,8 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
   </button>
 
   <script type="module">
-  // 👇 CHANGE THIS TO YOUR ACTUAL EMAIL BEFORE COPYING 👇
   const ADMIN_EMAIL = "namannausran1@gmail.com"; 
 
-  // Listens for your login session to safely show the button only to you
   if (typeof firebase !== 'undefined') {
     firebase.auth().onAuthStateChanged((user) => {
       if (user && user.email === ADMIN_EMAIL) {
@@ -1967,49 +1965,30 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
     ];
 
     try {
-      // Using modern Firestore v9/v10 syntax compatible with standard modules
+      // Accessing Firestore using your existing global firebase object structure
+      const firestoreDb = firebase.firestore();
+
       for (const player of realisticPlayers) {
-        let randomUserRef;
-        
-        if (typeof doc === 'function' && typeof collection === 'function') {
-          randomUserRef = doc(collection(db, "users"));
-          await setDoc(randomUserRef, {
-            displayName: player.name, 
-            level: player.level,
-            allTimePts: player.pts,
-            weeklyXpPts: player.xp,
-            streak: 12,
-            calLogged: 4,
-            mealLogsToday: 2,
-            proLogged: 1,
-            lastCalDay: "31/05/2026",
-            bodyStats: { arm: "16", chest: "42" },
-            challengeProgress: { habitDays: 5, proteinDays: 4, streak: 8, totalWo: 18, habitStreak: 5 },
-            weeklyWo: [1, 0, 1, 1, 0, 1, 0],
-            workoutDates: ["27/05/2026", "29/05/2026"]
-          });
-        } else {
-          // Fallback if using Firebase v8 namespaced syntax
-          await firebase.firestore().collection("users").add({
-            displayName: player.name, 
-            level: player.level,
-            allTimePts: player.pts,
-            weeklyXpPts: player.xp,
-            streak: 12,
-            calLogged: 4,
-            mealLogsToday: 2,
-            proLogged: 1,
-            lastCalDay: "31/05/2026",
-            bodyStats: { arm: "16", chest: "42" },
-            challengeProgress: { habitDays: 5, proteinDays: 4, streak: 8, totalWo: 18, habitStreak: 5 },
-            weeklyWo: [1, 0, 1, 1, 0, 1, 0],
-            workoutDates: ["27/05/2026", "29/05/2026"]
-          });
-        }
+        await firestoreDb.collection("users").add({
+          displayName: player.name, 
+          level: player.level,
+          allTimePts: player.pts,
+          weeklyXpPts: player.xp,
+          streak: 12,
+          calLogged: 4,
+          mealLogsToday: 2,
+          proLogged: 1,
+          lastCalDay: "31/05/2026",
+          bodyStats: { arm: "16", chest: "42" },
+          challengeProgress: { habitDays: 5, proteinDays: 4, streak: 8, totalWo: 18, habitStreak: 5 },
+          weeklyWo: [1, 0, 1, 1, 0, 1, 0],
+          workoutDates: ["27/05/2026", "29/05/2026"]
+        });
       }
       alert("Success! Realistic Indian accounts injected seamlessly.");
-      document.getElementById("devSeedBtn").styl
-e.display = "none";
+      
+      const btn = document.getElementById("devSeedBtn");
+      if (btn) btn.style.display = "none";
     } catch (e) {
       console.error("Error inserting players: ", e);
       alert("Failed to add players. Error: " + e.message);
