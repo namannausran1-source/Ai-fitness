@@ -281,7 +281,7 @@ function subscribeLB() {
   
   if (typeof db !== 'undefined') {
     lbUnsub = db.collection('users').onSnapshot(snap => {
-      window.__lbData = snap.docs.map(d => {
+      window._lbData = snap.docs.map(d => {
         const dt = d.data() || {};
         
         // Defensive sub-object fallbacks to prevent runtime crashes
