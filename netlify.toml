@@ -1,4 +1,4 @@
-# BulkUp — Netlify config
+# BulkUp — vercel config
 
 [[redirects]]
   from = "/app"
