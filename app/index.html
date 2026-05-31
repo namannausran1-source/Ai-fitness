@@ -1929,6 +1929,93 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
   </div>
 </div><!-- /page-app -->
 </div><!-- /app -->
+  <!-- ======================================================== -->
+  <!-- SECURE DUMMY PLAYER INJECTOR (ADMIN ONLY)                -->
+  <!-- ======================================================== -->
+  <button 
+    id="devSeedBtn" 
+    onclick="seedRealisticPlayers()" 
+    style="display: none; position: fixed; top: 15px; left: 15px; z-index: 99999; background: #ff3333; color: white; padding: 14px 20px; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);"
+  >
+    ⚠️ Inject Indian Dummy Players
+  </button>
+
+  <script type="module">
+  // 👇 CHANGE THIS TO YOUR ACTUAL EMAIL BEFORE COPYING 👇
+  const ADMIN_EMAIL = "namannausran1@gmail.com"; 
+
+  // Listens for your login session to safely show the button only to you
+  if (typeof firebase !== 'undefined') {
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user && user.email === ADMIN_EMAIL) {
+        document.getElementById("devSeedBtn").style.display = "block";
+      } else {
+        const btn = document.getElementById("devSeedBtn");
+        if (btn) btn.remove();
+      }
+    });
+  }
+
+  window.seedRealisticPlayers = async function() {
+    const realisticPlayers = [
+      { name: "Karan_Liftz", level: 88, pts: 14200, xp: 2200 },
+      { name: "PriyaFitness", level: 91, pts: 15300, xp: 2400 },
+      { name: "FitGamer92", level: 74, pts: 11050, xp: 1850 },
+      { name: "Rahul_Runs", level: 65, pts: 9200, xp: 1500 },
+      { name: "Anjali_Flex", level: 82, pts: 12800, xp: 1950 },
+      { name: "CardioKing_99", level: 71, pts: 10450, xp: 1700 }
+    ];
+
+    try {
+      // Using modern Firestore v9/v10 syntax compatible with standard modules
+      for (const player of realisticPlayers) {
+        let randomUserRef;
+        
+        if (typeof doc === 'function' && typeof collection === 'function') {
+          randomUserRef = doc(collection(db, "users"));
+          await setDoc(randomUserRef, {
+            displayName: player.name, 
+            level: player.level,
+            allTimePts: player.pts,
+            weeklyXpPts: player.xp,
+            streak: 12,
+            calLogged: 4,
+            mealLogsToday: 2,
+            proLogged: 1,
+            lastCalDay: "31/05/2026",
+            bodyStats: { arm: "16", chest: "42" },
+            challengeProgress: { habitDays: 5, proteinDays: 4, streak: 8, totalWo: 18, habitStreak: 5 },
+            weeklyWo: [1, 0, 1, 1, 0, 1, 0],
+            workoutDates: ["27/05/2026", "29/05/2026"]
+          });
+        } else {
+          // Fallback if using Firebase v8 namespaced syntax
+          await firebase.firestore().collection("users").add({
+            displayName: player.name, 
+            level: player.level,
+            allTimePts: player.pts,
+            weeklyXpPts: player.xp,
+            streak: 12,
+            calLogged: 4,
+            mealLogsToday: 2,
+            proLogged: 1,
+            lastCalDay: "31/05/2026",
+            bodyStats: { arm: "16", chest: "42" },
+            challengeProgress: { habitDays: 5, proteinDays: 4, streak: 8, totalWo: 18, habitStreak: 5 },
+            weeklyWo: [1, 0, 1, 1, 0, 1, 0],
+            workoutDates: ["27/05/2026", "29/05/2026"]
+          });
+        }
+      }
+      alert("Success! Realistic Indian accounts injected seamlessly.");
+      document.getElementById("devSeedBtn").styl
+e.display = "none";
+    } catch (e) {
+      console.error("Error inserting players: ", e);
+      alert("Failed to add players. Error: " + e.message);
+    }
+  }
+  </script>
 </body>
 </body>
 </html>
