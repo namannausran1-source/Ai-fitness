@@ -273,23 +273,29 @@ window.doLogout=function(){
 
 
 
-      // ========================================================
-      // SECTION 7 - LEADERBOARD SUBSCRIPTION (FIXED PARSER)
+            // ========================================================
+      // SECTION 7 - CRASH-PROOF LEADERBOARD SUBSCRIPTION 
       // ========================================================
       window.__lbData = snap.docs.map(d => {
-        const dt = d.data();
+        const dt = d.data() || {};
+        
+        // Defensive sub-object fallbacks to prevent runtime crashes
+        const uObj = dt.user || {};
+        const gObj = dt.gs || {};
+        const cProg = gObj.challengeProgress || {};
+        
         return {
           uid: d.id,
-          name: dt.user?.name || dt.displayName || dt.name || "Player",
-          avatar: dt.user?.avatar || "💪",
-          level: dt.user?.level || dt.gs?.level || dt.level || 1,
-          weeklyPts: dt.gs?.weeklyPts || dt.gs?.weeklyXpPts || dt.weeklyPts || 0,
-          allTimePts: dt.gs?.allTimePts || dt.allTimePts || 0,
-          habitStreak: dt.gs?.habitStreak || dt.habitStreak || 0,
-          totalWo: dt.totalWo || dt.workouts || dt.gs?.challengeProgress?.totalWo || 0
+          name: uObj.name || dt.displayName || dt.name || "Player",
+          avatar: uObj.avatar || "💪",
+          level: uObj.level || gObj.level || dt.level || 1,
+          weeklyPts: gObj.weeklyPts || gObj.weeklyXpPts || dt.weeklyPts || 0,
+          allTimePts: gObj.allTimePts || dt.allTimePts || 0,
+          habitStreak: gObj.habitStreak || dt.habitStreak || 0,
+          totalWo: dt.totalWo || dt.workouts || cProg.totalWo || 0
         };
       });
-
+   
 
 
 /* ═══════════════════════════════════════════════════
