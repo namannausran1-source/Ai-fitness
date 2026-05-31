@@ -273,27 +273,22 @@ window.doLogout=function(){
 
 
 
-/* ═══════════════════════════════════════════════════
-   SECTION 7 — LEADERBOARD SUBSCRIPTION
-═══════════════════════════════════════════════════ */
-let _lbDebounce=null;
-function subscribeLB(){
-  if(lbUnsub){lbUnsub();lbUnsub=null;}
-  // Fetch all users (simple query — no index needed)
-  // Client-side sort keeps it working without Firestore indexes
-  lbUnsub=onSnapshot(collection(db,'users'),snap=>{
-    window._lbData=snap.docs.map(d=>{const dt=d.data();return{uid:d.id,name:dt.user?.name||'Player',avatar:dt.user?.avatar||'💪',weeklyPts:dt.gs?.weeklyPts||0,allTimePts:dt.gs?.allTimePts||0,streak:dt.gs?.streak||0,habitStreak:dt.gs?.habitStreak||0,totalWo:dt.gs?.totalWo||0,level:dt.gs?.level||1};});
-    // Debounce re-renders to max once per second
-    clearTimeout(_lbDebounce);
-    _lbDebounce=setTimeout(()=>{
-      if(g('lb-weekly-list'))renderLeaderboard();
-      const rk=myRank();
-      const rv=g('prof-rank-val');if(rv)rv.textContent=rk>0?'#'+rk:'—';
-      const rp=g('prof-rank-pill');if(rp)rp.textContent='🏆 #'+(rk>0?rk:'—');
-      const dr=g('d-rank');if(dr)dr.textContent=rk>0?'#'+rk:'—';
-    },1000);
-  },e=>console.error('LB error:',e));
-}
+      // ========================================================
+      // SECTION 7 - LEADERBOARD SUBSCRIPTION (FIXED PARSER)
+      // ========================================================
+      window.__lbData = snap.docs.map(d => {
+        const dt = d.data();
+        return {
+          uid: d.id,
+          name: dt.user?.name || dt.displayName || dt.name || "Player",
+          avatar: dt.user?.avatar || "💪",
+          level: dt.user?.level || dt.gs?.level || dt.level || 1,
+          weeklyPts: dt.gs?.weeklyPts || dt.gs?.weeklyXpPts || dt.weeklyPts || 0,
+          allTimePts: dt.gs?.allTimePts || dt.allTimePts || 0,
+          habitStreak: dt.gs?.habitStreak || dt.habitStreak || 0,
+          totalWo: dt.totalWo || dt.workouts || dt.gs?.challengeProgress?.totalWo || 0
+        };
+      });
 
 
 
