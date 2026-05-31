@@ -273,9 +273,14 @@ window.doLogout=function(){
 
 
 
-            // ========================================================
-      // SECTION 7 - CRASH-PROOF LEADERBOARD SUBSCRIPTION 
-      // ========================================================
+            /* ═══════════════════════════════════════════════════
+   SECTION 7 - CRASH-PROOF LEADERBOARD SUBSCRIPTION 
+═══════════════════════════════════════════════════ */
+function subscribeLB() {
+  if (lbUnsub) { lbUnsub(); lbUnsub = null; }
+  
+  if (typeof db !== 'undefined') {
+    lbUnsub = db.collection('users').onSnapshot(snap => {
       window.__lbData = snap.docs.map(d => {
         const dt = d.data() || {};
         
@@ -295,6 +300,16 @@ window.doLogout=function(){
           totalWo: dt.totalWo || dt.workouts || cProg.totalWo || 0
         };
       });
+      
+      // Update UI seamlessly when data streams in
+      if (typeof renderLeaderboard === 'function') {
+        renderLeaderboard();
+      }
+    }, e => {
+      console.error('Leaderboard Subscription Error:', e);
+    });
+  }
+}
    
 
 
