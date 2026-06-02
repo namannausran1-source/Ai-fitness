@@ -1176,7 +1176,7 @@ window.shareWeeklyCard=function(){
     +'\nStreak: '+gs.streak+' weeks'
     +'\nXP earned: '+gs.weeklyPts
     +'\nRank: '+(myRank()>0?'#'+myRank():'-')
-    +'\nJoin me: getbulkup.netlify.app';
+    +'\nJoin me: getbulkup.vercel.app';
   showShareModal(txt);
 };
 
@@ -1188,7 +1188,7 @@ window.shareProfileCard=function(){
     +'\nTotal Workouts: '+gs.totalWo
     +'\nStreak: '+gs.streak+' weeks'
     +'\nXP: '+gs.xp
-    +'\nJoin me: getbulkup.netlify.app';
+    +'\nJoin me: getbulkup.vercel.app';
   showShareModal(txt);
 };
 
@@ -1725,7 +1725,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
     <div class="app-header">
       <div class="app-logo">Bulk<em>Up</em></div>
       <div style="display:flex;gap:7px;">
-        <div class="icon-btn" onclick="showToast('🔒 Secured by Netlify + Firebase!')">🔒</div>
+        <div class="icon-btn" onclick="showToast('🔒 Secured by vercel + Firebase!')">🔒</div>
         <div class="icon-btn" onclick="doLogout()" style="background:#fff0f0;border-color:#fca5a5;color:#ef4444;font-size:18px;" title="Logout">🚪</div>
       </div>
     </div>
@@ -1832,7 +1832,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
 
   <!-- MEAL -->
   <div id="sc-meal" style="display:none;flex-direction:column;flex:1;min-height:0;">
-    <div style="padding:16px 18px 7px;flex-shrink:0;"><div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;">Meal Planner 🍳</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">AI-powered · API secured by Netlify 🔒</div></div>
+    <div style="padding:16px 18px 7px;flex-shrink:0;"><div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;">Meal Planner 🍳</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">AI-powered · API secured by vercel 🔒</div></div>
     <div class="scroll pad">
       <div id="food-profile-card" style="display:none;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid var(--green);border-radius:18px;padding:15px;margin-bottom:12px;">
         <div style="font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;color:var(--gd);margin-bottom:4px;">🍱 Personalise Your Meal Plans</div>
