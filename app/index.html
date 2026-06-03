@@ -801,7 +801,7 @@ COACH NOTE
 [2 motivating sentences for a hardgainer going from ${user.weight}kg to ${user.targetWeight||'their target weight'}]`;
   try{
     const token=await auth.currentUser?.getIdToken();
-    const res=await fetch('/api/claude',{
+    const res=await fetch('/api/get-meal-plan',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
       body:JSON.stringify({messages:[{role:'user',content:prompt}]})
