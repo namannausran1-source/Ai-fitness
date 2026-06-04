@@ -801,7 +801,7 @@ COACH NOTE
 [2 motivating sentences for a hardgainer going from ${user.weight}kg to ${user.targetWeight||'their target weight'}]`;
   try{
     const token=await auth.currentUser?.getIdToken();
-    const res=await fetch('/api/get-meal-plan',{
+    const res=await fetch('https://getbulkup.vercel.app/api/get-meal-plan',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
       body:JSON.stringify({messages:[{role:'user',content:prompt}]})
@@ -812,7 +812,7 @@ COACH NOTE
     renderMeal(text);
   }catch(e){
     g('m-load').classList.remove('vis');g('m-btn').disabled=false;
-    alert('DEBUG ERROR: ' + e.message);
+    
     g('m-err').textContent='⚠️ Error. Try again.';g('m-err').classList.add('show');
   }
 };
