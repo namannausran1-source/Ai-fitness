@@ -812,6 +812,7 @@ COACH NOTE
     renderMeal(text);
   }catch(e){
     g('m-load').classList.remove('vis');g('m-btn').disabled=false;
+    alert('DEBUG ERROR: ' + e.message);
     g('m-err').textContent='⚠️ Error. Try again.';g('m-err').classList.add('show');
   }
 };
