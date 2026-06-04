@@ -810,10 +810,10 @@ COACH NOTE
     const text=data.content?.map(b=>b.text||'').join('')||'';
     if(!text){throw new Error('Empty response');}
     renderMeal(text);
-  }catch(e){
+}catch(e){
     g('m-load').classList.remove('vis');g('m-btn').disabled=false;
-    
-    g('m-err').textContent='⚠️ Error. Try again.';g('m-err').classList.add('show');
+    alert('ERR: ' + e.message);
+    g('m-err').textContent='⚠️ Error. Try again.';
   }
 };
 function renderMeal(text){
