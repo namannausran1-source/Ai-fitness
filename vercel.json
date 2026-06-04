@@ -1,12 +1,14 @@
 {
+  "buildCommand": "cd app && npm install 2>/dev/null || true",
+  "outputDirectory": "app",
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },
     {
-      "source": "/((?!api|_next|public).*)",
-      "destination": "/index.html"
+      "source": "/:path*",
+      "destination": "/app/index.html"
     }
   ]
 }
