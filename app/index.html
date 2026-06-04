@@ -806,7 +806,7 @@ COACH NOTE
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
       body:JSON.stringify({messages:[{role:'user',content:prompt}]})
     });
-    const data=await res.json();
+    const data=await res.json();if(data.error){alert('API ERR: '+JSON.stringify(data));throw new Error(data.error);}
     const text=data.content?.map(b=>b.text||'').join('')||'';
     if(!text){throw new Error('Empty response');}
     renderMeal(text);
