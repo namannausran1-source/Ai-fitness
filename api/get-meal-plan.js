@@ -14,7 +14,7 @@ module.exports = async function handler(req, res) {
     const finalPrompt = body.messages.map(m => m.content).join('\n');
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/Gemini 3.1 Flash Lite:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite::generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
