@@ -806,13 +806,11 @@ COACH NOTE
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
       body:JSON.stringify({messages:[{role:'user',content:prompt}]})
     });
-    const data=await res.json();if(data.error){alert('API ERR: '+JSON.stringify(data));throw new Error(data.error);}
     const text=data.content?.map(b=>b.text||'').join('')||'';
     if(!text){throw new Error('Empty response');}
     renderMeal(text);
 }catch(e){
     g('m-load').classList.remove('vis');g('m-btn').disabled=false;
-    alert('ERR: ' + e.message);
     g('m-err').textContent='⚠️ Error. Try again.';
   }
 };
@@ -1152,7 +1150,7 @@ window.enableNotifications=function(){
       return;
     }
     if(Notification.permission==='denied'){
-      s.innerHTML='Blocked by browser.<br>Fix: Chrome menu (3 dots) > Settings > Site Settings > Notifications > find getbulkup.netlify.app > Allow';
+      s.innerHTML='Blocked by browser.<br>Fix: Chrome menu (3 dots) > Settings > Site Settings > Notifications > find getbulkup.vercel.app > Allow';
       s.style.color='#ef4444';
       return;
     }
@@ -1242,7 +1240,7 @@ window.generateAndShare=function(type){
     x.fillStyle='rgba(255,255,255,0.55)';x.font='32px Arial';x.fillText('Weekly Summary',80,155);
     x.fillStyle='#fff';x.font='bold 74px Arial';x.fillText(user.name||'Champion',80,270);
     [{l:'Workouts',v:String(gs.weeklyWoCount||0)},{l:'Streak',v:String(gs.streak||0)+'wk'},{l:'XP',v:String(gs.weeklyPts||0)},{l:'Rank',v:myRank()>0?'#'+myRank():'-'}].forEach(function(s,i){var col=i%2,row=Math.floor(i/2),px=80+col*520,py=360+row*230;x.fillStyle='rgba(255,255,255,0.13)';x.fillRect(px,py,490,190);x.fillStyle='#fff';x.font='bold 72px Arial';x.textAlign='left';x.fillText(s.v,px+26,py+128);x.fillStyle='rgba(255,255,255,0.6)';x.font='30px Arial';x.fillText(s.l,px+26,py+172);});
-    x.fillStyle='rgba(255,255,255,0.3)';x.font='26px Arial';x.textAlign='right';x.fillText('getbulkup.netlify.app',1000,1058);
+    x.fillStyle='rgba(255,255,255,0.3)';x.font='26px Arial';x.textAlign='right';x.fillText('getbulkup.vercel.app',1000,1058);
   }else{
     var g2=x.createLinearGradient(0,0,0,1080);g2.addColorStop(0,'#0f172a');g2.addColorStop(1,'#1e293b');x.fillStyle=g2;x.fillRect(0,0,1080,1080);
     var g3=x.createLinearGradient(0,0,1080,0);g3.addColorStop(0,'#4f46e5');g3.addColorStop(1,'#22c55e');x.fillStyle=g3;x.fillRect(0,0,1080,8);
@@ -1255,15 +1253,15 @@ window.generateAndShare=function(type){
     x.fillStyle='#4f46e5';x.fillRect(100,455,Math.round(880*(li.pct/100)),22);
     x.fillStyle='rgba(255,255,255,0.4)';x.font='24px Arial';x.fillText(gs.xp+' XP - '+li.pct+'%',540,508);
     [{l:'Workouts',v:String(gs.totalWo||0),c:'#22c55e'},{l:'Streak',v:String(gs.streak||0)+'wk',c:'#f97316'},{l:'Rank',v:myRank()>0?'#'+myRank():'-',c:'#eab308'},{l:'Habits',v:String(gs.habitStreak||0)+'d',c:'#a855f7'}].forEach(function(s,i){var px=100+i*220,py=545;x.fillStyle='rgba(255,255,255,0.07)';x.fillRect(px,py,200,165);x.fillStyle=s.c;x.font='bold 58px Arial';x.textAlign='center';x.fillText(s.v,px+100,py+92);x.fillStyle='rgba(255,255,255,0.5)';x.font='25px Arial';x.fillText(s.l,px+100,py+140);});
-    x.fillStyle='rgba(255,255,255,0.2)';x.font='24px Arial';x.textAlign='center';x.fillText('getbulkup.netlify.app',540,1058);
+    x.fillStyle='rgba(255,255,255,0.2)';x.font='24px Arial';x.textAlign='center';x.fillText('getbulkup.vercel.app',540,1058);
   }
   var dataUrl=c.toDataURL('image/png');
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
   var img=document.createElement('img');img.src=dataUrl;img.style.cssText='max-width:100%;max-height:50vh;border-radius:16px;display:block;';
   var tip=document.createElement('p');tip.style.cssText='color:#fff;font-size:12px;margin:10px 0 8px;text-align:center;opacity:0.8;';tip.textContent='Long-press image to Save then share';
   var sb=document.createElement('a');sb.href='#';sb.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border-radius:14px;background:#4f46e5;color:#fff;font-size:14px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:8px;';sb.textContent='Share to Any App';
-  sb.onclick=function(e){e.preventDefault();c.toBlob(function(blob){if(!blob)return;var file=new File([blob],'bulkup.png',{type:'image/png'});if(navigator.share){var p=navigator.canShare&&navigator.canShare({files:[file]})?navigator.share({files:[file],title:'BulkUp'}):navigator.share({title:'BulkUp',text:'getbulkup.netlify.app'});p.catch(function(){});}else{showToast('Long-press image to save');};},'image/png');};
-  var waText=encodeURIComponent(type==='weekly'?'BulkUp Weekly! Workouts:'+(gs.weeklyWoCount||0)+' Streak:'+gs.streak+'wk XP:'+gs.weeklyPts+' getbulkup.netlify.app':'BulkUp Profile! '+user.name+' Level '+li.level+' Workouts:'+gs.totalWo+' XP:'+gs.xp+' getbulkup.netlify.app');
+  sb.onclick=function(e){e.preventDefault();c.toBlob(function(blob){if(!blob)return;var file=new File([blob],'bulkup.png',{type:'image/png'});if(navigator.share){var p=navigator.canShare&&navigator.canShare({files:[file]})?navigator.share({files:[file],title:'BulkUp'}):navigator.share({title:'BulkUp',text:'getbulkup.vercel.app'});p.catch(function(){});}else{showToast('Long-press image to save');};},'image/png');};
+  var waText=encodeURIComponent(type==='weekly'?'BulkUp Weekly! Workouts:'+(gs.weeklyWoCount||0)+' Streak:'+gs.streak+'wk XP:'+gs.weeklyPts+' getbulkup.vercel.app':'BulkUp Profile! '+user.name+' Level '+li.level+' Workouts:'+gs.totalWo+' XP:'+gs.xp+' getbulkup.vercel.app');
   var wa=document.createElement('a');wa.href='https://wa.me/?text='+waText;wa.target='_blank';wa.rel='noopener';wa.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-size:14px;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:8px;';wa.textContent='WhatsApp';
   var cl=document.createElement('a');cl.href='#';cl.onclick=function(e){e.preventDefault();document.body.removeChild(ov);};cl.style.cssText='display:block;width:100%;max-width:340px;padding:13px;border:2px solid rgba(255,255,255,0.3);border-radius:14px;color:#fff;font-size:14px;font-weight:700;text-align:center;text-decoration:none;box-sizing:border-box;';cl.textContent='Close';
   ov.appendChild(img);ov.appendChild(tip);ov.appendChild(sb);ov.appendChild(wa);ov.appendChild(cl);document.body.appendChild(ov);
@@ -1846,7 +1844,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       </div>
       <div class="card">
         <div class="card-title">🥡 Your Ingredients</div>
-        <textarea class="kta" id="m-ing" placeholder="e.g. rice, eggs, milk, peanut butter, banana..."></textarea>
+        <textarea class="kta" id="m-ing" maxlength="200" placeholder="Type your ingredients here, e.g. rice, eggs, milk, peanut butter, banana..."></textarea>
         <div style="font-size:10px;color:var(--muted);margin-bottom:7px;font-weight:600;">Quick add 👇</div>
         <div class="chip-row">
           <div class="chip" onclick="toggleChip(this,'Rice')">🍚 Rice</div>
