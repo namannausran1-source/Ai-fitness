@@ -6,26 +6,29 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
   try {
     const body = req.body;
     const finalPrompt = body.messages.map(m => m.content).join('\n');
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: finalPrompt }] }]
-        })
-      }
-    );
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://getbulkup.vercel.app',
+        'X-Title': 'BulkUp Meal Planner'
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.0-flash-exp:free',
+        messages: [{ role: 'user', content: finalPrompt }]
+      })
+    });
 
     const data = await response.json();
-    const textOutput = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const textOutput = data.choices?.[0]?.message?.content || '';
 
     if (!textOutput) {
       return res.status(500).json({ error: 'Empty response', raw: data });
