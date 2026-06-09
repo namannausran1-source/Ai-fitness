@@ -601,16 +601,6 @@ footer a:hover{color:var(--white);}
   }, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
   document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 
-  // animated live count
-  const liveEl = document.getElementById('live-count');
-  let base = 247;
-  setInterval(() => {
-    base += Math.floor(Math.random() * 5) - 2;
-    if(base < 210) base = 210;
-    if(base > 310) base = 310;
-    liveEl.textContent = base;
-  }, 4000);
-
   // hide sticky CTA near footer
   const stickyCta = document.querySelector('.sticky-cta');
   new IntersectionObserver(entries => {
