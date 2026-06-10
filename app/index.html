@@ -1957,16 +1957,19 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
   </button>
 
   <script type="module">
-  const ADMIN_EMAIL = "namannausran1@gmail.com"; 
-
+  // Admin check via Firebase custom claim — no email hardcoded in client.
+  // To grant access: set { admin: true } as a custom claim via Firebase Admin SDK.
   if (typeof firebase !== 'undefined') {
-    firebase.auth().onAuthStateChanged((user) => {
-      if (user && user.email === ADMIN_EMAIL) {
-        document.getElementById("devSeedBtn").style.display = "block";
-      } else {
-        const btn = document.getElementById("devSeedBtn");
-        if (btn) btn.remove();
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (user) {
+        const token = await user.getIdTokenResult();
+        if (token.claims?.admin === true) {
+          document.getElementById("devSeedBtn").style.display = "block";
+          return;
+        }
       }
+      const btn = document.getElementById("devSeedBtn");
+      if (btn) btn.remove();
     });
   }
 
@@ -2027,6 +2030,5 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
     }
   }
   </script>
-</body>
 </body>
 </html>
