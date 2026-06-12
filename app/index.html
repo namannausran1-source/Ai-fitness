@@ -29,6 +29,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 
 <script>
 /* ═══════════════════════════════════════════════════
@@ -188,7 +189,7 @@ onAuthStateChanged(auth,async(fu)=>{
 renderObProg();
       document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('show'));
       g('obs1').classList.add('show');
-    }else{const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}setTimeout(()=>{try{initApp();switchTab('home');saveFSNow();}catch(e){console.error(e);}},350);}
+    }else{const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}setTimeout(()=>{try{initApp();switchTab('home');saveFSNow();if(typeof initFCM==='function'&&Notification.permission==='granted')initFCM(currentUID);}catch(e){console.error(e);}},350);}
   }else{
     currentUID=null;
     ['page-app','page-ob'].forEach(p=>{const el=g(p);if(el){el.classList.remove('active');el.style.display='none';}});
@@ -1132,19 +1133,40 @@ function fireNotif(title,body,url){
   }catch(e){console.warn('Notif error:',e);}
 }
 
+// ── FCM: get token and save to Firestore ────────────────────────────────
+async function initFCM(uid) {
+  if (typeof firebase === 'undefined' || !firebase.messaging) return;
+  try {
+    const messaging = firebase.messaging();
+    const token = await messaging.getToken({
+      vapidKey: "YOUR_VAPID_KEY_HERE" // Replace with your VAPID key from Firebase Console > Project Settings > Cloud Messaging
+    });
+    if (token) {
+      await db.collection('users').doc(uid).set({ fcmToken: token }, { merge: true });
+      console.log('FCM token saved:', token);
+    }
+    // Handle foreground notifications
+    messaging.onMessage(payload => {
+      const { title, body } = payload.notification || {};
+      showToast((title ? title + ': ' : '') + (body || 'New notification'));
+    });
+  } catch(e) {
+    console.warn('FCM init failed:', e);
+  }
+}
+
 window.enableNotifications=function(){
   var btn=g('notif-btn');
   var lbl=btn?btn.querySelector('.sl-lbl'):null;
-  // Show modal immediately — guaranteed visible
   var m=document.createElement('div');
   m.id='notif-modal';
   m.style.cssText='position:fixed;left:0;right:0;bottom:0;top:0;z-index:99999;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;justify-content:center;';
   var inner=document.createElement('div');
   inner.style.cssText='background:#fff;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;';
-  inner.innerHTML='<div style="font-family:Nunito,sans-serif;font-size:20px;font-weight:900;margin-bottom:6px;">Enable Notifications</div>'
-    +'<div id="ns" style="background:#f0f4ff;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;color:#1e293b;line-height:1.8;">Get daily reminders to stay consistent!</div>'
+  inner.innerHTML='<div style="font-family:Nunito,sans-serif;font-size:20px;font-weight:900;margin-bottom:6px;">Enable Notifications 🔔</div>'
+    +'<div id="ns" style="background:#f0f4ff;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;color:#1e293b;line-height:1.8;">Get streak reminders, leaderboard alerts & workout nudges!</div>'
     +'<button id="nr" style="display:block;width:100%;padding:15px;border:none;border-radius:14px;background:#4f46e5;color:#fff;font-family:Nunito,sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;box-sizing:border-box;">Enable Now</button>'
-    +'<button id="nc" style="display:block;width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-sizing:border-box;">Close</button>';
+    +'<button id="nc" style="display:block;width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-sizing:border-box;">Maybe Later</button>';
   m.appendChild(inner);
   document.body.appendChild(m);
   document.getElementById('nc').onclick=function(){
@@ -1155,27 +1177,29 @@ window.enableNotifications=function(){
     var s=document.getElementById('ns');
     var el=document.getElementById('notif-modal');
     if(typeof Notification==='undefined'){
-      s.textContent='Not supported in this browser. Try Chrome.';
+      s.textContent='Not supported in this browser. Try Chrome on Android.';
       s.style.color='#ef4444';
       return;
     }
     if(Notification.permission==='granted'){
-      if(lbl)lbl.textContent='On';
+      if(lbl)lbl.textContent='✅ On';
       if(el)document.body.removeChild(el);
       showToast('Notifications already enabled!');
+      if(currentUID) initFCM(currentUID);
       return;
     }
     if(Notification.permission==='denied'){
-      s.innerHTML='Blocked by browser.<br>Fix: Chrome menu (3 dots) > Settings > Site Settings > Notifications > find getbulkup.vercel.app > Allow';
+      s.innerHTML='Blocked by browser.<br>Fix: Chrome menu (⋮) > Settings > Site Settings > Notifications > find getbulkup.vercel.app > Allow';
       s.style.color='#ef4444';
       return;
     }
     Notification.requestPermission().then(function(p){
       if(p==='granted'){
-        if(lbl)lbl.textContent='On';
+        if(lbl)lbl.textContent='✅ On';
         if(btn)btn.style.background='#f0fdf4';
         if(el)document.body.removeChild(el);
-        showToast('Notifications enabled!');
+        showToast('🔔 Notifications enabled!');
+        if(currentUID) initFCM(currentUID);
       }else{
         s.textContent='Permission denied. Go to Chrome Settings > Site Settings > Notifications > Allow.';
         s.style.color='#ef4444';
