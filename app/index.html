@@ -1139,7 +1139,7 @@ async function initFCM(uid) {
   try {
     const messaging = firebase.messaging();
     const token = await messaging.getToken({
-      vapidKey: "BEKkevn1-X88urR0NdJk8f-_THao8tt6uo_BmVhJEB3WSw4o3oEN_Vivx0AHUXbkAK1EKREYKH3wYwOJjLzFNaU
+      vapidKey: "BEKkevn1-X88urR0NdJk8f-_THao8tt6uo_BmVhJEB3WSw4o3oEN_Vivx0AHUXbkAK1EKREYKH3wYwOJjLzFNaU"
     });
     if (token) {
       await db.collection('users').doc(uid).set({ fcmToken: token }, { merge: true });
