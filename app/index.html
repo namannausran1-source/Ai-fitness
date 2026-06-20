@@ -749,7 +749,7 @@ function renderRecent(){
 /* ═══════════════════════════════════════════════════
    SECTION 15 — MEAL PLANNER
    AI via vercel serverless Function /api/get-meal-plan (Gemini 1.5 Flash)
-   Beta limit: 3 lifetime generations per user.
+   Beta limit: 3  generations per month per user.
 ═══════════════════════════════════════════════════ */
 window.fpPick=function(el,type){document.querySelectorAll(`#fp-${type}-row .chip`).forEach(c=>c.classList.remove('sel'));el.classList.add('sel');};
 window.saveFoodProfile=function(){
@@ -809,7 +809,7 @@ window.genMeal=async function(){
   const ing=g('m-ing').value.trim(),err=g('m-err');
   err.classList.remove('show');
   if(!ing){err.textContent='⚠️ Add some ingredients first!';err.classList.add('show');return;}
-  // 3 lifetime meal plan limit (beta)
+  // 3 meal per month plan limit (beta)
   const MEAL_LIMIT=3;
   const used=gs.mealPlansUsed||0;
   if(used>=MEAL_LIMIT){
