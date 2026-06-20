@@ -82,7 +82,14 @@ const db = firebase.firestore();
    All mutable state lives here. Reset on logout via defUser()/defGS().
 ═══════════════════════════════════════════════════ */
 let currentUID=null, lbUnsub=null, _appReady=false;
-const defGS=()=>({xp:0,level:1,streak:0,calLogged:0,proLogged:0,weeklyWo:[0,0,0,0,0,0,0],totalWo:0,lastWorkoutDate:'',weeklyPts:0,allTimePts:0,habitStreak:0,lastHabitDay:'',challengeProgress:{},lastCalDay:'',lastWeightDay:'',wosToday:0,mealLogsToday:0,lastMealLogDate:'',lastChallengeWeek:'',weeklyWoCount:0,lastStreakWeek:'',restDayLoggedWeek:''});
+const defGS=()=>({xp:0,level:1,streak:0,calLogged:0,proLogged:0,weeklyWo:[0,0,0,0,0,0,0],totalWo:0,lastWorkoutDate:'',weeklyPts:0,allTimePts:0,habitStreak:0,lastHabitDay:'',challengeProgress:{},lastCalDay:'',lastWeightDay:'',wosToday:0,mealLogsToday:0,lastMealLogDate:'',lastChallengeWeek:'',weeklyWoCount:0,lastStreakWeek:'',restDayLoggedWeek:'',mealPlansUsed:0,mentorUsed:0,usageMonth:''});
+/* Monthly AI usage cap (meal generator + hardgainer mentor) — resets automatically each calendar month */
+const AI_MONTHLY_LIMIT=3;
+function currentMonthKey(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1);}
+function resetMonthlyUsageIfNeeded(){
+  const mk=currentMonthKey();
+  if(gs.usageMonth!==mk){gs.usageMonth=mk;gs.mealPlansUsed=0;gs.mentorUsed=0;}
+}
 const defUser=()=>({name:'Champ',weight:'60',height:'175',age:'18',level:'Never worked out',calories:2500,protein:150,avatar:'💪',diet:'veg',region:'India',budget:'low',targetWeight:'75',restDaysPerWeek:4});
 let user=defUser(),gs=defGS();
 let tasksDone=new Set(),recentWorkouts=[],weightLog=[],bodyStats={chest:'',arm:''};
@@ -454,8 +461,9 @@ function initApp(){
   updateWeeklyStreak();
   updateXP();updateRings();drawChart();buildTasks();buildMission();renderWoPlans('home');renderRecent();buildAchievements();subscribeLB();
   if(gs.notifsEnabled)scheduleNotifications();
-  const _used=gs.mealPlansUsed||0,_lim=3,_rem=_lim-_used;
-  const _mb=g('m-btn');if(_mb){if(_rem<=0){_mb.disabled=true;_mb.textContent='🔒 Limit Reached ('+_used+'/'+_lim+')';}else if(_used>0)_mb.textContent='🍽️ Build My Meal Plan ('+_rem+' left)';}
+  resetMonthlyUsageIfNeeded();
+  const _used=gs.mealPlansUsed||0,_lim=AI_MONTHLY_LIMIT,_rem=_lim-_used;
+  const _mb=g('m-btn');if(_mb){if(_rem<=0){_mb.disabled=true;_mb.textContent='🔒 Monthly Limit Reached ('+_used+'/'+_lim+')';}else if(_used>0)_mb.textContent='🍽️ Build My Meal Plan ('+_rem+' left this month)';}
 }
 
 function buildMission(){
@@ -749,7 +757,7 @@ function renderRecent(){
 /* ═══════════════════════════════════════════════════
    SECTION 15 — MEAL PLANNER
    AI via vercel serverless Function /api/get-meal-plan (Gemini 1.5 Flash)
-   Beta limit: 3  generations per month per user.
+   Beta limit: 3 lifetime generations per user.
 ═══════════════════════════════════════════════════ */
 window.fpPick=function(el,type){document.querySelectorAll(`#fp-${type}-row .chip`).forEach(c=>c.classList.remove('sel'));el.classList.add('sel');};
 window.saveFoodProfile=function(){
@@ -780,6 +788,12 @@ function showFoodProfileIfNeeded(){
 window.askMentor=async function(){
   const q=g('mentor-q').value.trim();
   if(!q){showToast('⚠️ Type a question first');return;}
+  resetMonthlyUsageIfNeeded();
+  const mUsed=gs.mentorUsed||0;
+  if(mUsed>=AI_MONTHLY_LIMIT){
+    showToast('🔒 Mentor limit reached ('+mUsed+'/'+AI_MONTHLY_LIMIT+' this month). Resets next month!');
+    return;
+  }
   const load=g('mentor-load'),ans=g('mentor-answer');
   load.style.display='block';ans.style.display='none';
   const prompt=`You are a friendly, expert hardgainer fitness mentor for Indian skinny guys trying to bulk up. Answer this question in 2-4 short sentences, practical and specific to Indian food/gym context. No long intros, just the direct helpful answer.
@@ -794,12 +808,19 @@ Question: ${q}`;
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
       body:JSON.stringify({messages:[{role:'user',content:prompt}]})
     });
+    if(res.status===429||res.status===503){
+      load.style.display='none';
+      ans.textContent='🚦 High demand right now — lots of gainers using AI at once! Please wait a minute and try again.';
+      ans.style.display='block';
+      return;
+    }
     const data=await res.json();
     const text=data.content?.map(b=>b.text||'').join('')||data.text||'';
     load.style.display='none';
     if(!text){ans.textContent='⚠️ Could not get an answer. Try again.';ans.style.display='block';return;}
     ans.textContent=text.trim();ans.style.display='block';
     g('mentor-q').value='';
+    gs.mentorUsed=(gs.mentorUsed||0)+1;saveFS();
   }catch(e){
     load.style.display='none';
     ans.textContent='⚠️ Error reaching the mentor. Try again.';ans.style.display='block';
@@ -809,14 +830,15 @@ window.genMeal=async function(){
   const ing=g('m-ing').value.trim(),err=g('m-err');
   err.classList.remove('show');
   if(!ing){err.textContent='⚠️ Add some ingredients first!';err.classList.add('show');return;}
-  // 3 meal per month plan limit (beta)
-  const MEAL_LIMIT=3;
+  // 3 meal plan generations per calendar month
+  resetMonthlyUsageIfNeeded();
+  const MEAL_LIMIT=AI_MONTHLY_LIMIT;
   const used=gs.mealPlansUsed||0;
   if(used>=MEAL_LIMIT){
-    err.textContent='🔒 Beta limit reached ('+used+'/'+MEAL_LIMIT+' meal plans used). Thanks for testing!';
+    err.textContent='🔒 Monthly limit reached ('+used+'/'+MEAL_LIMIT+' meal plans this month). Resets next month!';
     err.classList.add('show');
     g('m-btn').disabled=true;
-    g('m-btn').textContent='🔒 Limit Reached ('+used+'/'+MEAL_LIMIT+')';
+    g('m-btn').textContent='🔒 Monthly Limit Reached ('+used+'/'+MEAL_LIMIT+')';
     return;
   }
   g('m-btn').disabled=true;g('m-load').classList.add('vis');g('m-result').classList.remove('vis');g('m-regen').style.display='none';
@@ -890,6 +912,12 @@ COACH NOTE
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
       body:JSON.stringify({messages:[{role:'user',content:prompt}]})
     });
+    if(res.status===429||res.status===503){
+      g('m-load').classList.remove('vis');g('m-btn').disabled=false;
+      g('m-err').textContent='🚦 High demand right now — lots of gainers using AI at once! Please wait a minute and try again.';
+      g('m-err').classList.add('show');
+      return;
+    }
     const data=await res.json();
     const text=data.content?.map(b=>b.text||'').join('')||'';
     if(!text){throw new Error('Empty response');}
@@ -897,6 +925,7 @@ COACH NOTE
 }catch(e){
     g('m-load').classList.remove('vis');g('m-btn').disabled=false;
     g('m-err').textContent='⚠️ Error. Try again.';
+    g('m-err').classList.add('show');
   }
 };
 function renderMeal(text){
@@ -934,9 +963,9 @@ function renderMeal(text){
   if(h===insightHtml)h+=`<div style="font-size:12px;line-height:1.75;white-space:pre-wrap;color:var(--text);">${text}</div>`;
   g('m-meals').innerHTML=h;g('m-result').classList.add('vis');g('m-regen').style.display='block';
   gs.mealPlansUsed=(gs.mealPlansUsed||0)+1;
-  const MEAL_LIMIT=3,remaining=MEAL_LIMIT-gs.mealPlansUsed;
-  if(remaining<=0){g('m-btn').disabled=true;g('m-btn').textContent='🔒 Limit Reached ('+gs.mealPlansUsed+'/'+MEAL_LIMIT+')';g('m-regen').style.display='none';}
-  else g('m-btn').textContent='🍽️ Build My Meal Plan ('+remaining+' left)';
+  const MEAL_LIMIT=AI_MONTHLY_LIMIT,remaining=MEAL_LIMIT-gs.mealPlansUsed;
+  if(remaining<=0){g('m-btn').disabled=true;g('m-btn').textContent='🔒 Monthly Limit Reached ('+gs.mealPlansUsed+'/'+MEAL_LIMIT+')';g('m-regen').style.display='none';}
+  else g('m-btn').textContent='🍽️ Build My Meal Plan ('+remaining+' left this month)';
   addXP(20,'Meal plan');saveFS();
 }
 window.toggleChip=function(el,food){
