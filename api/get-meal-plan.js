@@ -53,6 +53,17 @@ module.exports = async function handler(req, res) {
       }
     );
 
+    // Forward Gemini's rate-limit / overload status so the client can show
+    // a "high demand" message instead of a generic error.
+    if (response.status === 429 || response.status === 503) {
+      return res.status(response.status).json({ error: 'AI is under heavy load. Please try again shortly.' });
+    }
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      return res.status(502).json({ error: 'Upstream AI error', detail: errBody });
+    }
+
     const data = await response.json();
     const textOutput = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
