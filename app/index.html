@@ -30,6 +30,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
 
 <script>
 /* ═══════════════════════════════════════════════════
@@ -74,6 +75,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+const analytics = firebase.analytics();
+/* Tiny wrapper so every call-site stays short and never throws if analytics fails to load */
+function track(eventName, params){
+  try{ analytics.logEvent(eventName, params||{}); }catch(e){ /* fail silently — never block the app */ }
+}
 
 
 
@@ -186,6 +192,7 @@ onAuthStateChanged(auth,async(fu)=>{
     _appReady=true; // Now safe to save
     const pa2=g('page-auth');if(pa2){pa2.classList.remove('active');pa2.style.display='none';}
     if(!exists){
+      track('sign_up',{method:fu.providerData?.[0]?.providerId||'unknown'});
       _appReady=false; // Don't save until onboarding is complete
       const po=g('page-ob');if(po){po.classList.add('active');po.style.display='flex';}
       obStep=1;
@@ -196,7 +203,7 @@ onAuthStateChanged(auth,async(fu)=>{
 renderObProg();
       document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('show'));
       g('obs1').classList.add('show');
-    }else{const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}setTimeout(()=>{try{initApp();switchTab('home');saveFSNow();if(typeof initFCM==='function'&&Notification.permission==='granted')initFCM(currentUID);}catch(e){console.error(e);}},350);}
+    }else{track('login',{method:fu.providerData?.[0]?.providerId||'unknown'});const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}setTimeout(()=>{try{initApp();switchTab('home');saveFSNow();if(typeof initFCM==='function'&&Notification.permission==='granted')initFCM(currentUID);}catch(e){console.error(e);}},350);}
   }else{
     currentUID=null;
     ['page-app','page-ob'].forEach(p=>{const el=g(p);if(el){el.classList.remove('active');el.style.display='none';}});
@@ -371,7 +378,7 @@ window.obNext=async function(step){
   g('obs'+obStep).classList.add('show');renderObProg();
 };
 window.pickOb=function(el,g2){document.querySelectorAll(`#ob-${g2}-grid .ob-opt`).forEach(e=>e.classList.remove('sel'));el.classList.add('sel');if(g2==='lvl')obLevel=el.dataset.v;};
-window.enterApp=async function(){const po=g('page-ob');if(po){po.classList.remove('active');po.style.display='none';}const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}_appReady=true;setTimeout(()=>{try{initApp();switchTab('home');}catch(e){console.error(e);}},320);saveFSNow().catch(console.error);};
+window.enterApp=async function(){track('onboarding_complete');const po=g('page-ob');if(po){po.classList.remove('active');po.style.display='none';}const pp=g('page-app');if(pp){pp.classList.add('active');pp.style.display='flex';}_appReady=true;setTimeout(()=>{try{initApp();switchTab('home');}catch(e){console.error(e);}},320);saveFSNow().catch(console.error);};
 function calcTargets(){
   const w=parseFloat(user.weight)||60,h=parseFloat(user.height)||175,a=parseFloat(user.age)||20;
   const bmr=Math.round(88.36+(13.4*w)+(4.8*h)-(5.7*a));
@@ -746,7 +753,7 @@ function completeWorkout(){
   if(!xpAlreadyGiven)addXP(xpE,'Workout done');
   else{showToast('💪 Workout saved! XP already earned today.');saveFSNow();}
 }
-window.finishWorkout=function(){g('completeOverlay').classList.remove('show');g('wo-overlay').classList.remove('show');aw=null;renderRecent();updateXP();updateRings();drawChart();buildTasks();buildAchievements();switchTab('home');};
+window.finishWorkout=function(){track('workout_completed');g('completeOverlay').classList.remove('show');g('wo-overlay').classList.remove('show');aw=null;renderRecent();updateXP();updateRings();drawChart();buildTasks();buildAchievements();switchTab('home');};
 window.confirmStop=function(){if(confirm('Stop workout?')){clearInterval(woTmr);clearInterval(restTmr);g('restOverlay').classList.remove('show');g('wo-overlay').classList.remove('show');aw=null;}};
 function renderRecent(){
   const el=g('recent-list');
@@ -824,6 +831,7 @@ Question: ${q}`;
     ans.textContent=text.trim();ans.style.display='block';
     g('mentor-q').value='';
     gs.mentorUsed=(gs.mentorUsed||0)+1;saveFS();
+    track('mentor_question_asked');
   }catch(e){
     load.style.display='none';
     ans.textContent='⚠️ Error reaching the mentor. Try again.';ans.style.display='block';
@@ -932,6 +940,7 @@ COACH NOTE
   }
 };
 function renderMeal(text){
+  track('meal_plan_generated');
   g('m-load').classList.remove('vis');g('m-btn').disabled=false;
   g('m-rname').textContent=user.name;g('m-rcal').textContent=user.calories;
   const rsub=g('m-rsub');if(rsub){const de={'veg':'🥦 Veg','eggetarian':'🥚 Eggetarian','non-veg':'🍗 Non-Veg'}[user.diet||'veg'];rsub.textContent=`${de} · ${user.region||'India'} · ${user.weight}→${user.targetWeight||'?'}kg`;}
@@ -1879,7 +1888,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;displ
       <p style="margin-bottom:12px;">You can request deletion of your account and all associated data at any time by contacting us. Doing so permanently removes your profile, logs, and history from our systems.</p>
 
       <p style="font-weight:700;margin-bottom:4px;">Contact</p>
-      <p style="margin-bottom:4px;">Questions about this policy or your data? Reach out at <span style="font-weight:600;">[joinbulkup@gmail.com]</span>.</p>
+      <p style="margin-bottom:4px;">Questions about this policy or your data? Reach out at <span style="font-weight:600;">[your contact email here]</span>.</p>
     </div>
   </div>
 </div>
