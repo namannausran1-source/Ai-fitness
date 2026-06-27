@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BulkUp — Built for Hardgainers</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #07060f;
+  --purple: #6c3de8;
+  --purple-mid: #8b5cf6;
+  --purple-light: #c4b5fd;
+  --white: #f0eeff;
+  --off: #9490b0;
+  --green: #22c55e;
+  --red: #ef4444;
+  --border: rgba(140,92,246,0.15);
+}
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--white); font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
+body::before {
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0.035;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* URGENCY TOP BAR */
+.top-bar {
+  position:fixed; top:0; left:0; right:0; z-index:300;
+  background:linear-gradient(90deg,#6c3de8,#8b5cf6,#6c3de8); background-size:200% 100%;
+  animation:barShift 4s linear infinite;
+  padding:0.55rem 1.5rem;
+  display:flex; align-items:center; justify-content:center; gap:1rem;
+  font-size:0.8rem; font-weight:600; text-align:center;
+}
+@keyframes barShift{0%{background-position:0%}100%{background-position:200%}}
+.top-bar strong{color:#fff;}
+.tb-cta{
+  background:#fff; color:#6c3de8; padding:0.25rem 0.9rem; border-radius:100px;
+  font-weight:700; font-size:0.75rem; text-decoration:none; white-space:nowrap; flex-shrink:0;
+}
+.top-bar-close{
+  position:absolute; right:1rem; top:50%; transform:translateY(-50%);
+  background:none; border:none; color:rgba(255,255,255,0.7); font-size:1.1rem; cursor:pointer; line-height:1;
+}
+
+/* NAV */
+nav {
+  position:fixed; top:36px; left:0; right:0; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:1.1rem 2.5rem;
+  background:rgba(7,6,15,0.88); backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border); transition:top 0.3s;
+}
+nav.no-bar{top:0;}
+.logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.3rem;}
+.logo em{font-style:normal;background:linear-gradient(90deg,var(--purple-mid),var(--purple-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.nav-right{display:flex;align-items:center;gap:1.5rem;}
+.nav-link{font-size:0.88rem;color:var(--off);text-decoration:none;transition:color 0.2s;}
+.nav-link:hover{color:var(--white);}
+.nav-cta{
+  background:var(--green);color:#000;padding:0.55rem 1.4rem;border-radius:6px;
+  font-weight:700;font-size:0.88rem;text-decoration:none;
+  animation:pulseCta 2.5s ease-in-out infinite;
+}
+@keyframes pulseCta{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.5)}50%{box-shadow:0 0 0 8px rgba(34,197,94,0)}}
+.install-btn{
+  background:rgba(108,61,232,0.12);border:1px solid rgba(140,92,246,0.35);
+  color:var(--purple-light);padding:0.5rem 1rem;border-radius:6px;
+  font-family:inherit;font-weight:600;cursor:pointer;transition:background 0.2s,border-color 0.2s;
+}
+.install-btn:hover{background:rgba(108,61,232,0.22);border-color:var(--purple-mid);}
+
+/* HERO */
+.hero{min-height:100vh;display:grid;place-items:center;padding:10rem 2.5rem 5rem;position:relative;overflow:hidden;text-align:center;}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;}
+.orb-a{width:650px;height:650px;background:radial-gradient(circle,rgba(108,61,232,0.5),transparent 70%);top:-120px;left:50%;transform:translateX(-50%);animation:floatA 7s ease-in-out infinite;}
+.orb-b{width:280px;height:280px;background:radial-gradient(circle,rgba(140,92,246,0.28),transparent 70%);bottom:15%;right:8%;animation:floatB 9s ease-in-out infinite;}
+.orb-c{width:180px;height:180px;background:radial-gradient(circle,rgba(196,181,253,0.14),transparent 70%);top:30%;left:6%;animation:floatB 8s ease-in-out 2s infinite;}
+@keyframes floatA{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.1)}}
+@keyframes floatB{0%,100%{transform:scale(1) translate(0,0)}50%{transform:scale(1.12) translate(-8px,-12px)}}
+.hero-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(108,61,232,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(108,61,232,0.07) 1px,transparent 1px);background-size:64px 64px;mask-image:radial-gradient(ellipse 75% 75% at 50% 50%,black 20%,transparent 100%);}
+.hero-inner{position:relative;z-index:1;max-width:860px;}
+
+.live-badge{
+  display:inline-flex;align-items:center;gap:0.6rem;
+  background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);
+  color:#4ade80;font-size:0.78rem;font-weight:600;
+  padding:0.4rem 1.1rem;border-radius:100px;margin-bottom:1.2rem;
+  animation:fadeUp 0.4s ease both;
+}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;animation:blink 1.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+
+.pill{display:inline-flex;align-items:center;gap:0.5rem;background:rgba(108,61,232,0.12);border:1px solid rgba(140,92,246,0.3);color:var(--purple-light);font-size:0.78rem;font-weight:500;letter-spacing:0.5px;padding:0.4rem 1.1rem;border-radius:100px;margin-bottom:1rem;animation:fadeUp 0.5s ease both;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--purple-mid);box-shadow:0 0 8px var(--purple-mid);animation:blink 2s ease-in-out infinite;}
+
+.hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(4rem,13vw,10rem);line-height:0.88;letter-spacing:2px;animation:fadeUp 0.6s ease 0.1s both;}
+.h-dim{color:rgba(240,238,255,0.22);}
+.h-purple{background:linear-gradient(120deg,var(--purple-mid),var(--purple-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hero-sub{font-size:clamp(1rem,2vw,1.15rem);color:var(--off);line-height:1.8;max-width:520px;margin:1.6rem auto 0;font-weight:300;animation:fadeUp 0.6s ease 0.2s both;}
+
+.urgency-nudge{
+  display:inline-flex;align-items:center;gap:0.5rem;
+  background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);
+  color:#fca5a5;font-size:0.8rem;font-weight:600;
+  padding:0.4rem 1rem;border-radius:100px;margin-top:1.5rem;
+  animation:fadeUp 0.6s ease 0.25s both;
+}
+.urgency-nudge span{color:#ef4444;}
+
+.hero-ctas{display:flex;gap:1rem;justify-content:center;margin-top:1.8rem;flex-wrap:wrap;animation:fadeUp 0.6s ease 0.3s both;}
+.btn-g{
+  background:var(--green);color:#000;padding:1.1rem 2.8rem;border-radius:100px;
+  font-weight:700;font-size:1.05rem;text-decoration:none;
+  box-shadow:0 0 40px rgba(34,197,94,0.3);
+  transition:transform 0.2s,box-shadow 0.2s;position:relative;overflow:hidden;
+}
+.btn-g::after{content:'';position:absolute;inset:0;border-radius:100px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);transform:translateX(-100%);animation:shimmer 2.5s ease-in-out 1s infinite;}
+@keyframes shimmer{to{transform:translateX(100%)}}
+.btn-g:hover{transform:translateY(-3px);box-shadow:0 0 60px rgba(34,197,94,0.45);}
+.btn-p{background:rgba(108,61,232,0.12);border:1px solid rgba(140,92,246,0.35);color:var(--purple-light);padding:1.1rem 2.8rem;border-radius:100px;font-weight:600;font-size:1.05rem;text-decoration:none;transition:background 0.2s,border-color 0.2s;}
+.btn-p:hover{background:rgba(108,61,232,0.22);border-color:var(--purple-mid);}
+.cta-micro{font-size:0.75rem;color:var(--off);margin-top:0.8rem;animation:fadeUp 0.6s ease 0.4s both;}
+.cta-micro strong{color:var(--green);}
+
+.scroll-hint{position:absolute;bottom:2.5rem;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:0.5rem;color:var(--off);font-size:0.7rem;letter-spacing:2px;text-transform:uppercase;animation:fadeUp 1s ease 0.8s both;}
+.scroll-line{width:1px;height:48px;background:linear-gradient(to bottom,var(--purple-mid),transparent);animation:sp 2s ease-in-out infinite;}
+@keyframes sp{0%,100%{opacity:0.4}50%{opacity:1}}
+
+/* TICKER */
+.ticker-wrap{overflow:hidden;padding:1.2rem 0;background:rgba(108,61,232,0.06);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.ticker{display:flex;gap:3rem;width:max-content;animation:tick 22s linear infinite;}
+.ticker-wrap:hover .ticker{animation-play-state:paused;}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.t-item{display:flex;align-items:center;gap:0.6rem;font-size:0.82rem;color:var(--off);white-space:nowrap;flex-shrink:0;}
+.t-item strong{color:var(--white);}
+.t-sep{color:rgba(140,92,246,0.35);font-size:1.2rem;}
+
+/* STRIP */
+.strip{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:rgba(108,61,232,0.04);}
+.strip-item{padding:2.5rem 2rem;text-align:center;border-right:1px solid var(--border);position:relative;overflow:hidden;}
+.strip-item:last-child{border-right:none;}
+.strip-item::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--purple-mid),transparent);}
+.sn{font-family:'Bebas Neue',sans-serif;font-size:3.5rem;line-height:1;background:linear-gradient(135deg,var(--purple-mid),var(--purple-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.sl{font-size:0.78rem;color:var(--off);margin-top:0.3rem;}
+
+/* SHARED */
+.s-label{font-size:0.7rem;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--purple-mid);margin-bottom:1rem;display:flex;align-items:center;gap:0.6rem;}
+.s-label::before{content:'';width:22px;height:1px;background:var(--purple-mid);}
+.big-h{font-family:'Bebas Neue',sans-serif;font-size:clamp(3rem,7vw,6rem);line-height:0.92;letter-spacing:1px;}
+
+/* PROBLEM */
+.problem{padding:9rem 2.5rem;max-width:1100px;margin:0 auto;}
+.prob-layout{display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center;}
+.prob-cards{display:flex;flex-direction:column;gap:1.2rem;}
+.prob-card{display:flex;gap:1.2rem;align-items:flex-start;padding:1.5rem;border:1px solid var(--border);border-radius:14px;background:rgba(108,61,232,0.04);transition:border-color 0.3s,background 0.3s,transform 0.3s;}
+.prob-card:hover{border-color:rgba(140,92,246,0.4);background:rgba(108,61,232,0.1);transform:translateX(8px);}
+.prob-icon{width:46px;height:46px;flex-shrink:0;border-radius:12px;background:rgba(108,61,232,0.18);border:1px solid rgba(140,92,246,0.25);display:grid;place-items:center;font-size:1.2rem;}
+.prob-card h4{font-weight:600;font-size:0.95rem;margin-bottom:0.3rem;}
+.prob-card p{font-size:0.85rem;color:var(--off);line-height:1.6;}
+
+/* CTA BAND */
+.cta-band{margin:0;padding:5rem 2.5rem;background:linear-gradient(135deg,rgba(108,61,232,0.15),rgba(34,197,94,0.08));border-top:1px solid var(--border);border-bottom:1px solid var(--border);text-align:center;}
+.cta-band h3{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,6vw,4.5rem);line-height:0.95;margin-bottom:1rem;}
+.cta-band p{color:var(--off);font-size:1rem;margin-bottom:2rem;max-width:480px;margin-left:auto;margin-right:auto;}
+.cta-band-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;}
+.btn-big-g{background:var(--green);color:#000;padding:1.1rem 3rem;border-radius:100px;font-weight:700;font-size:1.05rem;box-shadow:0 0 40px rgba(34,197,94,0.3);transition:transform 0.2s,box-shadow 0.2s;display:inline-block;text-decoration:none;}
+.btn-big-g:hover{transform:translateY(-3px);box-shadow:0 0 60px rgba(34,197,94,0.45);}
+.cta-sub{font-size:0.75rem;color:var(--off);margin-top:0.75rem;}
+
+/* LOOP */
+.loop-wrap{padding:9rem 2.5rem;position:relative;overflow:hidden;background:linear-gradient(180deg,var(--bg),rgba(26,15,60,0.5),var(--bg));}
+.loop-bg-word{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Bebas Neue',sans-serif;font-size:22vw;color:rgba(108,61,232,0.05);white-space:nowrap;pointer-events:none;user-select:none;letter-spacing:8px;}
+.loop-inner{max-width:1100px;margin:0 auto;position:relative;z-index:1;}
+.loop-head{text-align:center;margin-bottom:4rem;}
+.loop-grid{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--border);border-radius:20px;overflow:hidden;background:var(--border);gap:1px;}
+.loop-step{background:var(--bg);padding:2.5rem 1.8rem;position:relative;transition:background 0.3s;}
+.loop-step:hover{background:rgba(108,61,232,0.09);}
+.loop-step::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--purple),var(--purple-light));}
+.step-bg-n{font-family:'Bebas Neue',sans-serif;font-size:5rem;line-height:1;color:rgba(140,92,246,0.1);position:absolute;top:0.8rem;right:1rem;}
+.s-emoji{font-size:2rem;display:block;margin-bottom:1.2rem;}
+.s-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.05rem;margin-bottom:0.5rem;}
+.s-desc{font-size:0.84rem;color:var(--off);line-height:1.65;}
+.xp{display:inline-block;margin-top:1.2rem;background:rgba(108,61,232,0.15);border:1px solid rgba(140,92,246,0.25);color:var(--purple-light);font-size:0.78rem;font-weight:600;padding:0.25rem 0.75rem;border-radius:100px;}
+
+/* FEATURES */
+.features{padding:9rem 2.5rem;max-width:1100px;margin:0 auto;}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;margin-top:3.5rem;}
+.feat-card{background:rgba(108,61,232,0.05);border:1px solid var(--border);border-radius:16px;padding:2rem;position:relative;overflow:hidden;transition:border-color 0.3s,transform 0.3s,background 0.3s;}
+.feat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--purple-mid),transparent);opacity:0;transition:opacity 0.3s;}
+.feat-card:hover{border-color:rgba(140,92,246,0.4);transform:translateY(-4px);background:rgba(108,61,232,0.1);}
+.feat-card:hover::after{opacity:1;}
+.feat-card.span2{grid-column:span 2;}
+.f-icon{width:48px;height:48px;border-radius:12px;background:rgba(108,61,232,0.2);border:1px solid rgba(140,92,246,0.2);display:grid;place-items:center;font-size:1.3rem;margin-bottom:1.2rem;}
+.f-title{font-weight:700;font-size:1rem;margin-bottom:0.5rem;}
+.f-desc{font-size:0.87rem;color:var(--off);line-height:1.65;}
+
+/* COMPARE */
+.compare{padding:9rem 2.5rem;}
+.compare-inner{max-width:800px;margin:0 auto;}
+.compare-head{text-align:center;margin-bottom:3rem;}
+.tbl-wrap{border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:rgba(108,61,232,0.12);border-bottom:1px solid var(--border);}
+thead th{padding:1.1rem 1.5rem;text-align:left;font-size:0.7rem;letter-spacing:2px;text-transform:uppercase;color:var(--off);font-weight:600;}
+thead th.th-bup{color:var(--purple-light);}
+tbody tr{border-bottom:1px solid var(--border);transition:background 0.2s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:rgba(108,61,232,0.06);}
+tbody td{padding:1rem 1.5rem;font-size:0.92rem;}
+tbody td:first-child{color:var(--white);font-weight:500;}
+.td-mfp{color:#444;}
+.td-bup{color:var(--purple-light);font-weight:600;}
+.td-bup::before{content:'✦ ';font-size:0.6rem;color:var(--purple-mid);}
+
+/* PRICING */
+.pricing{padding:9rem 2.5rem;max-width:1100px;margin:0 auto;}
+.pricing-head{text-align:center;margin-bottom:4rem;}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;align-items:start;}
+.p-card{border-radius:20px;padding:2.2rem;border:1px solid var(--border);background:rgba(108,61,232,0.05);position:relative;transition:transform 0.3s;}
+.p-card:hover{transform:translateY(-6px);}
+.p-card.pro{border-color:var(--purple-mid);background:rgba(108,61,232,0.12);box-shadow:0 0 60px rgba(108,61,232,0.18),inset 0 1px 0 rgba(196,181,253,0.15);}
+.pro-badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:linear-gradient(90deg,var(--purple),var(--purple-mid));color:white;font-size:0.68rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:0.3rem 1.2rem;border-radius:100px;white-space:nowrap;box-shadow:0 4px 20px rgba(108,61,232,0.35);}
+.p-tier{font-size:0.7rem;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--off);margin-bottom:1rem;}
+.pro .p-tier{color:var(--purple-light);}
+.p-amount{font-family:'Bebas Neue',sans-serif;font-size:5rem;line-height:1;letter-spacing:-1px;}
+.p-sym{font-size:2.5rem;vertical-align:top;margin-top:0.7rem;display:inline-block;}
+.p-cycle{font-size:0.82rem;color:var(--off);margin:0.3rem 0 1.8rem;}
+.p-div{height:1px;background:var(--border);margin-bottom:1.5rem;}
+.p-list{list-style:none;display:flex;flex-direction:column;gap:0.7rem;}
+.p-list li{font-size:0.88rem;color:#bbb;display:flex;align-items:flex-start;gap:0.6rem;}
+.ck{color:var(--purple-mid);flex-shrink:0;}
+.pro .ck{color:var(--purple-light);}
+.p-btn{display:block;margin-top:2rem;text-align:center;padding:0.9rem;border-radius:100px;font-weight:700;font-size:0.95rem;text-decoration:none;transition:opacity 0.2s,transform 0.2s;}
+.p-btn:hover{opacity:0.88;transform:translateY(-1px);}
+.p-free{border:1px solid rgba(140,92,246,0.25);color:var(--purple-light);}
+.p-free:hover{background:rgba(108,61,232,0.1);}
+.p-pro{background:linear-gradient(90deg,var(--purple),var(--purple-mid));color:white;box-shadow:0 4px 24px rgba(108,61,232,0.3);}
+.p-coach{background:var(--green);color:#000;}
+
+/* FINAL CTA */
+.final{padding:10rem 2.5rem;text-align:center;position:relative;overflow:hidden;}
+.final-orb{position:absolute;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(108,61,232,0.22),transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);filter:blur(60px);pointer-events:none;}
+.final-inner{position:relative;z-index:1;}
+.final h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(3.5rem,10vw,8rem);line-height:0.9;margin-bottom:1.5rem;}
+.h-grd{background:linear-gradient(120deg,var(--purple-mid),var(--purple-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.final p{color:var(--off);font-size:1rem;margin-bottom:1rem;line-height:1.8;}
+.final-urgency{display:inline-flex;align-items:center;gap:0.5rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#fca5a5;font-size:0.82rem;font-weight:600;padding:0.4rem 1rem;border-radius:100px;margin-bottom:2rem;}
+.final-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:1rem;}
+.final-micro{font-size:0.75rem;color:var(--off);}
+.final-micro strong{color:var(--green);}
+
+/* STICKY MOBILE CTA */
+.sticky-cta{display:none;position:fixed;bottom:0;left:0;right:0;z-index:400;padding:1rem 1.5rem 1.4rem;background:rgba(7,6,15,0.96);backdrop-filter:blur(20px);border-top:1px solid var(--border);flex-direction:column;gap:0.5rem;align-items:center;}
+.sticky-cta a{display:block;width:100%;text-align:center;background:var(--green);color:#000;padding:1rem;border-radius:100px;font-weight:700;font-size:1rem;text-decoration:none;box-shadow:0 0 30px rgba(34,197,94,0.35);animation:pulseCta 2s ease-in-out infinite;}
+.sticky-cta-sub{font-size:0.72rem;color:var(--off);text-align:center;}
+.sticky-cta-sub strong{color:var(--green);}
+
+/* FOOTER */
+footer{padding:2rem 2.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;color:var(--off);flex-wrap:wrap;gap:1rem;}
+footer a{color:var(--off);text-decoration:none;transition:color 0.2s;}
+footer a:hover{color:var(--white);}
+.f-links{display:flex;gap:1.5rem;flex-wrap:wrap;}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
+.reveal{opacity:0;transform:translateY(36px);transition:opacity 0.7s cubic-bezier(0.22,1,0.36,1),transform 0.7s cubic-bezier(0.22,1,0.36,1);}
+.reveal.visible{opacity:1;transform:none;}
+.d1{transition-delay:0.1s}.d2{transition-delay:0.2s}.d3{transition-delay:0.3s}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .prob-layout{grid-template-columns:1fr;gap:3rem;}
+  .loop-grid{grid-template-columns:1fr 1fr;}
+  .feat-grid{grid-template-columns:1fr 1fr;}
+  .feat-card.span2{grid-column:span 1;}
+  .pricing-grid{grid-template-columns:1fr;max-width:380px;margin:0 auto;}
+  .strip{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:600px){
+  nav{padding:1rem 1.5rem;top:34px;}
+  .nav-link:not(.nav-cta):not(.install-btn){display:none;}
+  .install-btn{font-size:0.78rem;padding:0.45rem 0.8rem;}
+  .loop-grid{grid-template-columns:1fr;}
+  .feat-grid{grid-template-columns:1fr;}
+  footer{flex-direction:column;text-align:center;}
+  .sticky-cta{display:flex;}
+  body{padding-bottom:90px;}
+  .top-bar{font-size:0.72rem;padding:0.5rem 2.5rem 0.5rem 1rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- URGENCY TOP BAR -->
+<div class="top-bar" id="top-bar">
+  <strong>🔥 Beta is live</strong> — Free forever for early users. Spots filling fast.
+  <a href="https://getbulkup.vercel.app/app/" class="tb-cta">Join Now →</a>
+  <button class="top-bar-close" onclick="document.getElementById('top-bar').style.display='none';document.querySelector('nav').classList.add('no-bar');">✕</button>
+</div>
+
+<nav>
+  <div class="logo">Bulk<em>Up</em></div>
+  <div class="nav-right">
+    <a href="#features" class="nav-link">Features</a>
+    <a href="#pricing" class="nav-link">Pricing</a>
+    <button id="install-btn" class="nav-link install-btn" style="display:none;" onclick="installPWA()">📲 Install App</button>
+    <a href="https://getbulkup.vercel.app/app/" class="nav-cta">Start Free →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="orb orb-a"></div>
+  <div class="orb orb-b"></div>
+  <div class="orb orb-c"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-inner">
+    <div class="live-badge">
+      <span class="live-dot"></span>
+  
+    </div>
+    <div class="pill"><span class="dot"></span> Built for Indian hardgainers · Live now</div>
+    <h1>
+      <span class="h-dim">EVERY APP</span><br>
+      <span class="h-dim">IS BUILT TO</span><br>
+      <span class="h-purple">LOSE WEIGHT.</span><br>
+      NOT THIS ONE.
+    </h1>
+    <p class="hero-sub">BulkUp is the first fitness app built for skinny guys trying to put on real muscle — AI Indian meal plans, progressive workouts, and a live leaderboard to keep you honest.</p>
+    <div class="urgency-nudge">⚡ <span>Free beta</span> — won't be free forever. Lock your spot now.</div>
+    <div class="hero-ctas">
+      <a href="https://getbulkup.vercel.app/app/" class="btn-g">🚀 Start Bulking Free →</a>
+      <a href="#pricing" class="btn-p">See Plans</a>
+    </div>
+    <div class="cta-micro">✅ <strong>No credit card.</strong> Free forever tier. Takes 30 seconds to sign up.</div>
+  </div>
+  <div class="scroll-hint"><div class="scroll-line"></div>scroll</div>
+</section>
+
+<!-- SOCIAL PROOF TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker">
+    <div class="t-item">💪 <strong>Rahul from Delhi</strong> gained 4kg in 6 weeks</div>
+    <div class="t-sep">·</div>
+    <div class="t-item">🔥 <strong>Arjun from Mumbai</strong> hit a 45-day streak</div>
+    <div class="t-sep">·</div>
+    <div class="t-item">🏆 <strong>Karan from Hyderabad</strong> reached #1 on the leaderboard</div>
+    <div class="t-sep">·</div>
+    <div class="t-item">⚡ <strong>Priya from Bangalore</strong> finally hit her protein goal daily</div>
+    <div class="t-sep">·</div>
+    <div class="t-item">🍛 <strong>Vikram from Chennai</strong> — "best Indian meal plans I've seen"</div>
+    <div class="t-sep">·</div>
+    <div class="t-item">💪 <strong>Rahul from Delhi</strong> gained 4kg in 6 weeks</div>
+    <div class="t-sep">·</div>
+    <div class="t-item">🔥 <strong>Arjun from Mumbai</strong> hit a 45-day streak</div>
+    <div class="t-sep">·</div>
+    <div class="t-item">🏆 <strong>Karan from Hyderabad</strong> reached #1 on the leaderboard</div>
+    <div class="t-sep">·</div>
+    <div class="t-item">⚡ <strong>Priya from Bangalore</strong> finally hit her protein goal daily</div>
+    <div class="t-sep">·</div>
+    <div class="t-item">🍛 <strong>Vikram from Chennai</strong> — "best Indian meal plans I've seen"</div>
+    <div class="t-sep">·</div>
+  </div>
+</div>
+
+<!-- STRIP -->
+<div class="strip reveal">
+  <div class="strip-item"><div class="sn">₹0</div><div class="sl">To start today</div></div>
+  <div class="strip-item"><div class="sn">9</div><div class="sl">Features live</div></div>
+  <div class="strip-item"><div class="sn">1 in 5</div><div class="sl">Gym-goers are hardgainers</div></div>
+  <div class="strip-item"><div class="sn">₹149</div><div class="sl">Pro per month</div></div>
+</div>
+
+<!-- PROBLEM -->
+<section class="problem">
+  <div class="prob-layout">
+    <div>
+      <div class="s-label reveal">The Problem</div>
+      <h2 class="big-h reveal">Three things<br>go wrong,<br>every time.</h2>
+      <p class="reveal" style="color:var(--off);font-size:1rem;line-height:1.8;margin-top:1.5rem;font-weight:300;">Open MyFitnessPal as a 60kg guy trying to gain muscle. It asks how much weight you want to <em>lose</em>. That's the whole problem.</p>
+      <a href="https://getbulkup.vercel.app/app/" class="btn-g reveal" style="display:inline-block;margin-top:2rem;text-decoration:none;">Fix all 3 — Free →</a>
+    </div>
+    <div class="prob-cards">
+      <div class="prob-card reveal">
+        <div class="prob-icon">🍽️</div>
+        <div><h4>They under-eat</h4><p>Guessing calories. Feeling full at 2,200 kcal. Never hitting the surplus needed to actually grow.</p></div>
+      </div>
+      <div class="prob-card reveal d1">
+        <div class="prob-icon">🏃</div>
+        <div><h4>They under-train</h4><p>Random YouTube workouts with no progressive overload. Weight on the bar never moves.</p></div>
+      </div>
+      <div class="prob-card reveal d2">
+        <div class="prob-icon">💀</div>
+        <div><h4>They quit by week 4</h4><p>No visible change. No accountability. No community that actually gets it.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INLINE CTA BAND -->
+<div class="cta-band">
+  <h3 class="reveal">STOP BEING THE<br><span class="h-purple">SKINNY GUY.</span></h3>
+  <p class="reveal">Every week you wait is a week your friends get bigger. BulkUp gives you the exact plan — no guesswork, no generic advice.</p>
+  <div class="cta-band-btns reveal">
+    <a href="https://getbulkup.vercel.app/app/" class="btn-big-g">🔥 Start My Bulk — It's Free</a>
+  </div>
+  <div class="cta-sub reveal">No credit card · 30 seconds to sign up · Free forever tier</div>
+</div>
+
+<!-- LOOP -->
+<section class="loop-wrap">
+  <div class="loop-bg-word">LOOP</div>
+  <div class="loop-inner">
+    <div class="loop-head">
+      <div class="s-label reveal" style="justify-content:center;">How It Works</div>
+      <h2 class="big-h reveal">One loop. Every day.</h2>
+      <p class="reveal" style="color:var(--off);margin-top:0.8rem;">Four habits. Repeated daily. That's how physiques are built.</p>
+    </div>
+    <div class="loop-grid reveal">
+      <div class="loop-step">
+        <div class="step-bg-n">01</div>
+        <span class="s-emoji">🌅</span>
+        <div class="s-title">Wake Up</div>
+        <div class="s-desc">Open the app. See today's mission, calorie target, and habit streak.</div>
+        <div class="xp">+30 XP</div>
+      </div>
+      <div class="loop-step">
+        <div class="step-bg-n">02</div>
+        <span class="s-emoji">💪</span>
+        <div class="s-title">Train</div>
+        <div class="s-desc">Follow your home or gym plan. Track sets live. Progressive overload, automated.</div>
+        <div class="xp">+80 XP</div>
+      </div>
+      <div class="loop-step">
+        <div class="step-bg-n">03</div>
+        <span class="s-emoji">🍛</span>
+        <div class="s-title">Eat</div>
+        <div class="s-desc">Log your dal, roti, paneer. Hit your protein. App tells you when you're short.</div>
+        <div class="xp">+60 XP</div>
+      </div>
+      <div class="loop-step">
+        <div class="step-bg-n">04</div>
+        <span class="s-emoji">⚖️</span>
+        <div class="s-title">Log Weight</div>
+        <div class="s-desc">Weekly weigh-in feeds your auto-adjusting calorie target. Smarter every week.</div>
+        <div class="xp">+30 XP</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="s-label reveal">Features</div>
+  <h2 class="big-h reveal">Everything a<br>hardgainer needs.</h2>
+  <div class="feat-grid">
+    <div class="feat-card span2 reveal">
+      <div class="f-icon">🤖</div>
+      <div class="f-title">AI Meal Generator</div>
+      <div class="f-desc">Tell us your fridge, budget, and state. The AI builds a full day of Indian meals — dal, roti, paneer, oats — that hit your exact calorie surplus. No guessing. No generic plans.</div>
+    </div>
+    <div class="feat-card reveal d1">
+      <div class="f-icon">📊</div>
+      <div class="f-title">Smart Surplus Calculator</div>
+      <div class="f-desc">Personalized calorie + protein targets. Auto-adjusts every 2 weeks based on actual weight gain.</div>
+    </div>
+    <div class="feat-card reveal">
+      <div class="f-icon">🏋️</div>
+      <div class="f-title">Home + Gym Workouts</div>
+      <div class="f-desc">Beginner to advanced. Track sets live. Progressive overload built in automatically.</div>
+    </div>
+    <div class="feat-card reveal d1">
+      <div class="f-icon">🏆</div>
+      <div class="f-title">Live Leaderboard</div>
+      <div class="f-desc">Compete with real people every week. XP, streaks, challenges. Nothing motivates like someone about to overtake your rank.</div>
+    </div>
+    <div class="feat-card reveal d2">
+      <div class="f-icon">📤</div>
+      <div class="f-title">Share Your Progress</div>
+      <div class="f-desc">Generate a weekly stats card. Share to WhatsApp or Instagram in one tap.</div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARE -->
+<section class="compare">
+  <div class="compare-inner">
+    <div class="compare-head">
+      <div class="s-label reveal" style="justify-content:center;">vs MyFitnessPal</div>
+      <h2 class="big-h reveal">Same logging.<br>Opposite mission.</h2>
+    </div>
+    <div class="tbl-wrap reveal">
+      <table>
+        <thead><tr><th>Feature</th><th>MyFitnessPal</th><th class="th-bup">BulkUp</th></tr></thead>
+        <tbody>
+          <tr><td>Default goal</td><td class="td-mfp">Weight loss</td><td class="td-bup">Muscle gain</td></tr>
+          <tr><td>Calorie target</td><td class="td-mfp">Set once, never adjusts</td><td class="td-bup">Auto-adjusts every 2 weeks</td></tr>
+          <tr><td>Indian food</td><td class="td-mfp">Basic database only</td><td class="td-bup">AI builds full desi meal plans</td></tr>
+          <tr><td>Workout plans</td><td class="td-mfp">None — log only</td><td class="td-bup">Home + Gym, progressive</td></tr>
+          <tr><td>Social competition</td><td class="td-mfp">None</td><td class="td-bup">Live weekly leaderboard</td></tr>
+          <tr><td>Audience</td><td class="td-mfp">Everyone</td><td class="td-bup">Hardgainers only</td></tr>
+          <tr><td>Price to start</td><td class="td-mfp">Free (then paywall)</td><td class="td-bup">Free forever tier</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="text-align:center;margin-top:2.5rem;">
+      <a href="https://getbulkup.vercel.app/app/" class="btn-g reveal" style="display:inline-block;text-decoration:none;">Switch to BulkUp — Free →</a>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="pricing-head">
+    <div class="s-label reveal" style="justify-content:center;">Pricing</div>
+    <h2 class="big-h reveal">Free to start.<br>Pay to grow faster.</h2>
+    <p class="reveal" style="color:var(--off);margin-top:0.8rem;font-size:0.95rem;">No hidden charges. Cancel anytime. Built for Indian students.</p>
+  </div>
+  <div class="pricing-grid">
+    <div class="p-card reveal">
+      <div class="p-tier">Free</div>
+      <div class="p-amount"><span class="p-sym">₹</span>0</div>
+      <div class="p-cycle">forever · no card needed</div>
+      <div class="p-div"></div>
+      <ul class="p-list">
+        <li><span class="ck">✦</span>Surplus calculator</li>
+        <li><span class="ck">✦</span>Habit Loop tracking</li>
+        <li><span class="ck">✦</span>3 starter workout plans</li>
+        <li><span class="ck">✦</span>Calorie + protein logging</li>
+        <li><span class="ck">✦</span>Public leaderboard</li>
+        <li><span class="ck">✦</span>3 AI meal plans/month</li>
+      </ul>
+      <a href="https://getbulkup.vercel.app/app/" class="p-btn p-free">Start Free Now →</a>
+    </div>
+    <div class="p-card pro reveal d1">
+      <div class="pro-badge">⭐ Most Popular</div>
+      <div class="p-tier">Pro</div>
+      <div class="p-amount"><span class="p-sym">₹</span>149</div>
+      <div class="p-cycle">per month · less than a protein bar</div>
+      <div class="p-div"></div>
+      <ul class="p-list">
+        <li><span class="ck">✦</span>Everything in Free</li>
+        <li><span class="ck">✦</span>Auto-adjusting calorie target</li>
+        <li><span class="ck">✦</span>Full workout library</li>
+        <li><span class="ck">✦</span>Unlimited AI meal generator</li>
+        <li><span class="ck">✦</span>Bulk Buddy pairing</li>
+        <li><span class="ck">✦</span>Priority leaderboard badges</li>
+      </ul>
+      <a href="https://getbulkup.vercel.app/app/" class="p-btn p-pro">Get Pro →</a>
+    </div>
+    <div class="p-card reveal d2">
+      <div class="p-tier">Coach</div>
+      <div class="p-amount"><span class="p-sym">₹</span>599</div>
+      <div class="p-cycle">per month · personal guidance</div>
+      <div class="p-div"></div>
+      <ul class="p-list">
+        <li><span class="ck">✦</span>Everything in Pro</li>
+        <li><span class="ck">✦</span>Weekly check-in with a coach</li>
+        <li><span class="ck">✦</span>Custom training program</li>
+        <li><span class="ck">✦</span>Form-check video review</li>
+        <li><span class="ck">✦</span>Direct chat support</li>
+      </ul>
+      <a href="https://getbulkup.vercel.app/app/" class="p-btn p-coach">Get Coach →</a>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final">
+  <div class="final-orb"></div>
+  <div class="final-inner">
+    <div class="final-urgency">⏳ Free beta pricing ends soon — lock it in now</div>
+    <h2 class="reveal">
+      HELP US BUILD<br>
+      THE APP EVERY<br>
+      <span class="h-grd">SKINNY KID</span><br>
+      WISHES EXISTED.
+    </h2>
+    <p class="reveal">Zero outside funding. Built solo, in high school, for ₹0.<br>Try it. Tell your gym friends. Beat them on the leaderboard.</p>
+    <div class="final-btns reveal">
+      <a href="https://getbulkup.vercel.app/app/" class="btn-g" style="text-decoration:none;">🚀 Start Bulking Free →</a>
+      <a href="#pricing" class="btn-p" style="text-decoration:none;">View Plans</a>
+    </div>
+    <div class="final-micro reveal"><strong>Free forever tier available.</strong> No card needed. 30 seconds to sign up.</div>
+  </div>
+</section>
+
+<footer>
+  <div class="logo">Bulk<em>Up</em></div>
+  <div class="f-links">
+    <a href="https://getbulkup.vercel.app">getbulkup.vercel.app</a>
+    <a href="mailto:hello@bulkup.app">hello@bulkup.app</a>
+    <span>Naman, Founder · 2026</span>
+  </div>
+</footer>
+
+<!-- STICKY MOBILE CTA -->
+<div class="sticky-cta">
+  <a href="https://getbulkup.vercel.app/app/">🚀 Start Bulking Free — No Card Needed</a>
+  <div class="sticky-cta-sub"><strong>Free forever</strong> · Takes 30 seconds</div>
+</div>
+
+<script>
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if(e.isIntersecting){ e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+  // hide sticky CTA near footer
+  const stickyCta = document.querySelector('.sticky-cta');
+  new IntersectionObserver(entries => {
+    stickyCta.style.display = entries[0].isIntersecting ? 'none' : '';
+  }).observe(document.querySelector('footer'));
+
+  // PWA INSTALL PROMPT
+  // Chrome/Edge/Android fire 'beforeinstallprompt' when the app is installable.
+  // We stash the event and only show our button once it's actually available —
+  // this avoids showing a button that does nothing on unsupported browsers (e.g. iOS Safari).
+  let deferredInstallPrompt = null;
+  const installBtn = document.getElementById('install-btn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (installBtn) installBtn.style.display = 'inline-flex';
+  });
+
+  window.installPWA = async function () {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    // Hide the button regardless of outcome — the native prompt only fires once per session
+    if (installBtn) installBtn.style.display = 'none';
+    deferredInstallPrompt = null;
+  };
+
+  // If the app gets installed (any path), hide the button for the rest of the session
+  window.addEventListener('appinstalled', () => {
+    if (installBtn) installBtn.style.display = 'none';
+    deferredInstallPrompt = null;
+  });
+</script>
+</body>
+</html>
